@@ -5,7 +5,7 @@ async function fixture(page){
  let active=null;
  let pending={request_id:'c'.repeat(32),state:'REVIEW_REQUIRED',decision:'ESCALATE',agent_id:'agent',initiated_by:'someone-else',action:{tool:'report.send',arguments:{recipient:'review@example.test'}},expires_at:Date.now()/1000+900};
  await page.route('**/api/**',async route=>{
-  const url=new URL(route.request().url());const path=url.pathname;let body={};
+  const url=new URL(route.request().url());const path=url.pathname;if(!path.startsWith('/api/'))return route.continue();let body={};
   if(path.endsWith('/session/login'))body={access_token:'offline-test-session'};
   else if(path.endsWith('/session'))body={principal_id:'reviewer',organization_id:'org',permissions:['drafts','publish','sources','review','activity'],groups:['managers'],workspaces:[{id:'org',name:'Test company'}]};
   else if(path.endsWith('/overview'))body={active_policy_id:active,agents:0,connectors:0,pending:pending.state==='REVIEW_REQUIRED'?1:0,counts:{},window:'latest 200 actions'};

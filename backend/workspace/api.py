@@ -22,6 +22,7 @@ from workspace.sources import LocalStorage
 from workspace.admin import Administration
 from workspace.runtime import Runtime
 from workspace.compiler import Compiler
+from core.governor_policy import load_policy
 
 BASE = Path(__file__).resolve().parents[1]
 bearer = HTTPBearer(auto_error=False)
@@ -238,6 +239,7 @@ def create_app(database=None):
     def overview(request: Request, who=Depends(identity)):
         if who.kind != "human":
             raise HTTPException(403, "Human session required")
+        risk_policy = load_policy()
         with request.app.state.db.transaction(who.organization_id) as s:
             org = s.get(Organization, who.organization_id)
             # Dashboard counts are bounded to the visible recent window, explicitly labeled.
@@ -245,7 +247,11 @@ def create_app(database=None):
             return {"active_policy_id": org.active_policy_id, "agents": len(listed(s, Agent, org.id)), "connectors": len(listed(s, Connector, org.id)),
                     "counts": {d: sum(a.data["response"]["decision"] == d for a in actions) for d in ("ALLOW", "BLOCK", "ESCALATE")},
                     "pending": sum(a.state == "REVIEW_REQUIRED" and a.data["expires_at"] > time.time() for a in actions),
-                    "window": "latest 200 actions", "capabilities": {k: sorted(v) for k,v in CAPABILITIES.items()}}
+                    "window": "latest 200 actions", "capabilities": {k: sorted(v) for k,v in CAPABILITIES.items()},
+                    "governance": {"semantic_enabled": risk_policy.semantic_enabled,
+                                   "semantic_required_at": risk_policy.semantic_required_at,
+                                   "semantic_unavailable": risk_policy.semantic_unavailable,
+                                   "thresholds": risk_policy.thresholds}}
 
     @app.get("/api/registry")
     def registry(request: Request, who=Depends(identity)):

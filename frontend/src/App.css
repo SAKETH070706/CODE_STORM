@@ -682,3 +682,5 @@
 .footer-dot {
   color: rgba(255, 255, 255, 0.2);
 }
+
+.request-fields{border:0;min-width:0;width:100%;box-sizing:border-box}fieldset:disabled button,button:disabled{cursor:wait;opacity:.55}

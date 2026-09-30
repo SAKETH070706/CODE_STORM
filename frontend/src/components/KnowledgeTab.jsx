@@ -1,92 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import useRequest from './useRequest';
+import {describeError,isCancelled} from '../workspaceClient';
 import { getRagStats, reindexKnowledge, listDocuments, uploadDocument, deleteDocument } from '../api/knowledge';
 
 export default function KnowledgeTab() {
-  const [stats, setStats] = useState({
-    total_chunks: 0,
-    dimension: 1024,
-    index_name: 'code-storm',
-    namespace: 'default',
-    connected_to_pinecone: false,
-    total_documents: 0,
-    is_mock: false
+  const request=useRequest();
+  const [stats,setStats]=useState({}),[documents,setDocuments]=useState([]);
+  const [operation,setOperation]=useState(''),[statusNote,setStatusNote]=useState(''),[error,setError]=useState('');
+  const [uploadFile,setUploadFile]=useState(null),[loaded,setLoaded]=useState(false);
+  const isIngesting=operation==='reindex',isUploading=operation==='upload';
+  const load=useCallback(async(signal)=>{
+    const results=await Promise.allSettled([request.call(signal,s=>getRagStats(s)),request.call(signal,s=>listDocuments(s))]);
+    if(!request.active()||signal.aborted)return;
+    const failures=[];
+    if(results[0].status==='fulfilled')setStats(results[0].value);else failures.push('Metrics: '+describeError(results[0].reason));
+    if(results[1].status==='fulfilled'&&Array.isArray(results[1].value?.documents)){setDocuments(results[1].value.documents);setLoaded(true);}
+    else failures.push('Documents: '+(results[1].status==='rejected'?describeError(results[1].reason):'Invalid server response.'));
+    setError(failures.join(' '));
+  },[request]);
+  const run=useCallback(async(name,fn)=>{
+    const signal=request.begin();if(!signal)return;
+    setOperation(name);setError('');if(name!=='refresh')setStatusNote('');
+    try{if(fn)await fn(signal);await load(signal);}
+    catch(e){if(!isCancelled(e)&&request.active())setError(describeError(e));}
+    finally{if(request.finish(signal))setOperation('');}
+  },[request,load]);
+  const fetchKnowledgeData=useCallback(()=>run('refresh'),[run]);
+  // Initial server synchronization uses the same guarded lifecycle as manual refresh.
+  // oxlint-disable-next-line react/set-state-in-effect
+  useEffect(()=>{fetchKnowledgeData();},[fetchKnowledgeData]);
+  const handleReindex=()=>run('reindex',async signal=>{
+    const data=await request.call(signal,s=>reindexKnowledge(s));
+    setStatusNote('Re-index completed: '+data.documents_processed+' document(s), '+data.chunks_ingested+' chunks.');
   });
-  const [documents, setDocuments] = useState([]);
-  const [isIngesting, setIsIngesting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [statusNote, setStatusNote] = useState('');
-  const [uploadFile, setUploadFile] = useState(null);
-
-  const fetchKnowledgeData = async () => {
-    try {
-      const [statsData, docsData] = await Promise.all([
-        getRagStats().catch(() => null),
-        listDocuments().catch(() => null)
-      ]);
-
-      if (statsData) {
-        setStats(statsData);
-      }
-      if (docsData && docsData.documents) {
-        setDocuments(docsData.documents);
-      }
-    } catch (err) {
-      console.warn('Could not fetch knowledge data:', err);
-    }
+  const handleUploadSubmit=e=>{
+    e.preventDefault();if(!uploadFile)return;
+    const form=e.currentTarget;
+    return run('upload',async signal=>{
+      const result=await request.call(signal,s=>uploadDocument(uploadFile,s));
+      setStatusNote('Document "'+result.name+'" indexed successfully.');setUploadFile(null);form.reset();
+    });
   };
-
-  useEffect(() => {
-    fetchKnowledgeData();
-  }, []);
-
-  const handleReindex = async () => {
-    setIsIngesting(true);
-    setStatusNote('');
-    try {
-      const data = await reindexKnowledge();
-      setStatusNote(`✅ Successfully indexed ${data.documents_processed} document(s) into ${data.chunks_ingested} Pinecone vector chunks!`);
-      await fetchKnowledgeData();
-    } catch (err) {
-      setStatusNote(`❌ Re-indexing failed: ${err.message}`);
-    } finally {
-      setIsIngesting(false);
-    }
-  };
-
-  const handleUploadSubmit = async (e) => {
-    e.preventDefault();
-    if (!uploadFile || isUploading) return;
-
-    setIsUploading(true);
-    setStatusNote('');
-    try {
-      const res = await uploadDocument(uploadFile);
-      setStatusNote(`✅ Document "${res.name}" successfully indexed into ${res.chunk_count} vector chunks!`);
-      setUploadFile(null);
-      e.target.reset();
-      await fetchKnowledgeData();
-    } catch (err) {
-      setStatusNote(`❌ Upload failed: ${err.message}`);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleDelete = async (docId, docName) => {
-    if (!confirm(`Are you sure you want to delete "${docName}"? This will delete both the database record and all vectors from Pinecone.`)) {
-      return;
-    }
-    try {
-      await deleteDocument(docId);
-      setStatusNote(`🗑️ Deleted document "${docName}" and purged its Pinecone vectors.`);
-      await fetchKnowledgeData();
-    } catch (err) {
-      setStatusNote(`❌ Delete failed: ${err.message}`);
-    }
+  const handleDelete=(id,name)=>{
+    if(operation||!confirm('Delete "'+name+'" and its indexed vectors?'))return;
+    return run('delete',async signal=>{await request.call(signal,s=>deleteDocument(id,s));setStatusNote('Deleted "'+name+'".');});
   };
 
   return (
-    <div className="glass-card">
+    <fieldset className="glass-card request-fields" disabled={!!operation} aria-busy={!!operation}>
       <div className="card-header flex-between">
         <div>
           <h2 className="card-title">📚 Vector Knowledge Base & Document Store</h2>
@@ -106,25 +67,27 @@ export default function KnowledgeTab() {
       {/* Stats Banner */}
       <div className="stats-banner">
         <div className="stat-box">
-          <div className="stat-num">{stats.total_chunks}</div>
+          <div className="stat-num">{stats.total_chunks??'Unavailable'}</div>
           <div className="stat-label">Vector Chunks in Pinecone</div>
         </div>
         <div className="stat-box">
-          <div className="stat-num" style={{ color: '#8b5cf6' }}>{stats.total_documents}</div>
+          <div className="stat-num" style={{ color: '#8b5cf6' }}>{stats.total_documents??'Unavailable'}</div>
           <div className="stat-label">Documents in PostgreSQL</div>
         </div>
         <div className="stat-box">
-          <div className="stat-num" style={{ color: '#06b6d4' }}>{stats.dimension}</div>
+          <div className="stat-num" style={{ color: '#06b6d4' }}>{stats.dimension??'Unavailable'}</div>
           <div className="stat-label">Embedding Dimension</div>
         </div>
         <div className="stat-box">
           <div className="stat-num" style={{ color: stats.connected_to_pinecone ? '#10b981' : '#f59e0b' }}>
-            {stats.connected_to_pinecone ? 'Active' : (stats.is_mock ? 'Fallback' : 'Connecting')}
+            {stats.connected_to_pinecone ? 'Active' : (stats.is_mock ? 'Fallback' : 'Unavailable')}
           </div>
           <div className="stat-label">Pinecone Index Status</div>
         </div>
       </div>
 
+      {operation&&<p role="status">{operation==='refresh'?'Refreshing data...':'Processing request...'}</p>}
+      {error&&<p className="error-banner" role="alert">{error}</p>}
       {/* Status Note Banner */}
       {statusNote && (
         <div className={`status-banner-box ${statusNote.startsWith('❌') ? 'error-banner' : 'success-banner'}`}>
@@ -207,7 +170,7 @@ export default function KnowledgeTab() {
                     <td>{(doc.file_size / 1024).toFixed(1)} KB</td>
                     <td>
                       <code style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                        {doc.content_hash.slice(0, 10)}...
+                        {doc.content_hash?.slice(0, 10)||'Unavailable'}...
                       </code>
                     </td>
                     <td>
@@ -226,10 +189,10 @@ export default function KnowledgeTab() {
           </div>
         ) : (
           <div className="empty-state-box" style={{ padding: '2rem' }}>
-            No documents currently indexed. Click "Re-Index Knowledge Base Now" or upload a file above.
+            {loaded?'No documents currently indexed. Re-index or upload a file above.':'Document list is not available yet. Use Refresh to try again.'}
           </div>
         )}
       </div>
-    </div>
+    </fieldset>
   );
 }

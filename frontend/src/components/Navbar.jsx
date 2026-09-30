@@ -4,19 +4,14 @@ import { checkReadiness, checkHealth } from '../api/health';
 export default function Navbar() {
   const [systemStatus, setSystemStatus] = useState('CHECKING'); // ONLINE | DEGRADED | OFFLINE | CHECKING
   const [statusDetail, setStatusDetail] = useState('Connecting to backend...');
-  const [providerInfo, setProviderInfo] = useState({
-    db: 'PostgreSQL',
-    vector: 'Pinecone',
-    primaryLlm: 'Groq',
-    fallbackLlm: 'Gemini'
-  });
 
   useEffect(() => {
-    let isMounted = true;
+    let isMounted = true,timer;
+    const controller=new AbortController();
 
     const pollHealth = async () => {
       try {
-        const readyData = await checkReadiness();
+        const readyData = await checkReadiness(controller.signal);
         if (!isMounted) return;
 
         if (readyData.status === 'ready') {
@@ -32,25 +27,26 @@ export default function Navbar() {
           setSystemStatus('OFFLINE');
           setStatusDetail('Backend Not Ready');
         }
-      } catch (err) {
+      } catch {
         if (!isMounted) return;
         // Fallback check to basic health
         try {
-          await checkHealth();
+          await checkHealth(controller.signal);
+          if(!isMounted)return;
           setSystemStatus('DEGRADED');
           setStatusDetail('API Alive (Dependencies Starting)');
         } catch {
+          if(!isMounted)return;
           setSystemStatus('OFFLINE');
           setStatusDetail('Backend Disconnected');
         }
-      }
+      } finally {if(isMounted)timer=setTimeout(pollHealth,6000);}
     };
 
     pollHealth();
-    const interval = setInterval(pollHealth, 6000);
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      clearTimeout(timer);controller.abort();
     };
   }, []);
 

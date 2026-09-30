@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import useRequest from './useRequest';
+import {describeError,isCancelled} from '../workspaceClient';
 import { processQuery } from '../api/chat';
 
 const QUICK_PROMPTS = [
@@ -9,6 +11,7 @@ const QUICK_PROMPTS = [
 ];
 
 export default function ChatTab() {
+  const request=useRequest();
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -36,14 +39,16 @@ export default function ChatTab() {
     const textToSend = (typeof queryText === 'string' ? queryText : inputQuery).trim();
     if (!textToSend || isLoading) return;
 
-    setInputQuery('');
+    const signal=request.begin();if(!signal)return;
     setErrorMessage('');
     setMessages((prev) => [...prev, { role: 'user', content: textToSend }]);
     setIsLoading(true);
 
     try {
-      const data = await processQuery(textToSend, '', conversationId);
+      const data = await request.call(signal,s=>processQuery(textToSend, '', conversationId,s));
 
+      if(typeof data.response!=='string')throw new Error('The server returned an invalid chat response.');
+      setInputQuery('');
       if (data.conversation_id && !conversationId) {
         setConversationId(data.conversation_id);
       }
@@ -59,7 +64,9 @@ export default function ChatTab() {
         }
       ]);
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to process request.');
+      if(isCancelled(err))return;
+      setInputQuery(textToSend);
+      setErrorMessage(describeError(err));
       setMessages((prev) => [
         ...prev,
         {
@@ -73,11 +80,12 @@ export default function ChatTab() {
         }
       ]);
     } finally {
-      setIsLoading(false);
+      if(request.finish(signal))setIsLoading(false);
     }
   };
 
   const handleClearChat = () => {
+    if(isLoading)return;
     setMessages([
       {
         role: 'assistant',
@@ -102,6 +110,7 @@ export default function ChatTab() {
         </div>
         <button
           className="secondary-btn btn-sm"
+          disabled={isLoading}
           onClick={handleClearChat}
           title="Start a new chat session"
         >
@@ -184,7 +193,7 @@ export default function ChatTab() {
         </form>
 
         {errorMessage && (
-          <div className="error-banner">
+          <div className="error-banner" role="alert">
             ⚠️ {errorMessage}
           </div>
         )}

@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import useRequest from './useRequest';
+import {describeError,isCancelled} from '../workspaceClient';
 import { extractText, extractImage } from '../api/extraction';
 
 const SAMPLE_TEXTS = {
@@ -23,6 +25,7 @@ Plan: Hydration, OTC Guaifenesin 400mg q4h PRN, follow up in 7 days if symptoms 
 };
 
 export default function ExtractTab() {
+  const request=useRequest(),copyTimer=useRef(null);
   const [mode, setMode] = useState('text');
   const [textInput, setTextInput] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -32,11 +35,13 @@ export default function ExtractTab() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  useEffect(()=>()=>{if(previewUrl)URL.revokeObjectURL(previewUrl);},[previewUrl]);
+  useEffect(()=>()=>clearTimeout(copyTimer.current),[]);
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setErrorMsg('File exceeds 10MB upload limit.');
+      if (file.size > 2 * 1024 * 1024) {
+        setErrorMsg('File exceeds 2 MiB upload limit.');
         return;
       }
       setSelectedFile(file);
@@ -48,53 +53,56 @@ export default function ExtractTab() {
 
   const handleExtractText = async () => {
     if (!textInput.trim() || isProcessing) return;
+    const signal=request.begin();if(!signal)return;
     setIsProcessing(true);
     setErrorMsg('');
     setExtractedData(null);
 
     try {
-      const data = await extractText(textInput);
+      const data = await request.call(signal,s=>extractText(textInput,s));
       if (data.status === 'success' && data.extracted) {
         setExtractedData(data.extracted);
       } else {
         setErrorMsg(data.error || 'Extraction failed to conform to schema.');
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Extraction failed.');
+      if(isCancelled(err))return;
+      setErrorMsg(describeError(err));
     } finally {
-      setIsProcessing(false);
+      if(request.finish(signal))setIsProcessing(false);
     }
   };
 
   const handleExtractImage = async () => {
     if (!selectedFile || isProcessing) return;
+    const signal=request.begin();if(!signal)return;
     setIsProcessing(true);
     setErrorMsg('');
     setExtractedData(null);
 
     try {
-      const data = await extractImage(selectedFile);
+      const data = await request.call(signal,s=>extractImage(selectedFile,s));
       if (data.status === 'success' && data.extracted) {
         setExtractedData(data.extracted);
       } else {
         setErrorMsg(data.error || 'Multimodal extraction failed.');
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Image extraction failed.');
+      if(isCancelled(err))return;
+      setErrorMsg(describeError(err));
     } finally {
-      setIsProcessing(false);
+      request.finish(signal);if(request.active())setIsProcessing(false);
     }
   };
 
-  const copyToClipboard = () => {
+  const copyToClipboard = async () => {
     if (!extractedData) return;
-    navigator.clipboard.writeText(JSON.stringify(extractedData, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {await navigator.clipboard.writeText(JSON.stringify(extractedData,null,2));if(!request.active())return;setCopied(true);clearTimeout(copyTimer.current);copyTimer.current=setTimeout(()=>setCopied(false),2000);}
+    catch {if(request.active())setErrorMsg('Clipboard unavailable. Select and copy the JSON below manually.');}
   };
 
   return (
-    <div className="glass-card">
+    <fieldset className="glass-card request-fields" disabled={isProcessing} aria-busy={isProcessing}>
       <div className="card-header">
         <h2 className="card-title">📷 Multimodal Structured Extraction</h2>
         <p className="card-subtitle">
@@ -141,6 +149,7 @@ export default function ExtractTab() {
               </div>
 
               <textarea
+                maxLength={16000}
                 rows={11}
                 className="chat-input"
                 style={{ width: '100%', resize: 'vertical' }}
@@ -169,7 +178,7 @@ export default function ExtractTab() {
                   onChange={handleFileChange}
                 />
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📤</div>
-                <div style={{ fontWeight: 600 }}>Click to browse or drop document image</div>
+                <div style={{ fontWeight: 600 }}>Click to browse document images (maximum 2 MiB)</div>
                 <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.35rem' }}>
                   Supports PNG, JPG, WEBP (Invoices, Receipts, Prescription Strips, ID Cards)
                 </div>
@@ -215,7 +224,7 @@ export default function ExtractTab() {
           </div>
 
           {errorMsg && (
-            <div className="error-banner" style={{ marginBottom: '1rem' }}>
+            <div className="error-banner" role="alert" style={{ marginBottom: '1rem' }}>
               ⚠️ {errorMsg}
             </div>
           )}
@@ -244,6 +253,6 @@ export default function ExtractTab() {
           )}
         </div>
       </div>
-    </div>
+    </fieldset>
   );
 }

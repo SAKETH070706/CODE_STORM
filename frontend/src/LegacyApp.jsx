@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import {ErrorBoundary} from './workspace/shared';
 import Navbar from './components/Navbar';
 import ChatTab from './components/ChatTab';
 import ExtractTab from './components/ExtractTab';
@@ -39,11 +40,11 @@ export default function App() {
         </button>
       </nav>
 
-      <main>
+      <main><ErrorBoundary key={activeTab}>
         {activeTab === 'chat' && <ChatTab />}
         {activeTab === 'extract' && <ExtractTab />}
         {activeTab === 'knowledge' && <KnowledgeTab />}
-      </main>
+      </ErrorBoundary></main>
     </div>
   );
 }

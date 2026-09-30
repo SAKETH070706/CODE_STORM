@@ -1,18 +1,18 @@
 import { apiClient } from './client';
 
-export async function getRagStats() {
-  return apiClient('/api/rag/stats');
+export async function getRagStats(signal) {
+  return apiClient('/api/rag/stats', {signal});
 }
 
-export async function reindexKnowledge() {
+export async function reindexKnowledge(signal) {
   return apiClient('/api/rag/reindex', {
-    method: 'POST'
+    signal, method: 'POST'
   });
 }
 
-export async function queryRag(query, topK = 4, minScore = 0.3) {
+export async function queryRag(query, topK = 4, minScore = 0.3, signal) {
   return apiClient('/api/rag/query', {
-    method: 'POST',
+    signal, method: 'POST',
     body: {
       query,
       top_k: topK,
@@ -21,21 +21,21 @@ export async function queryRag(query, topK = 4, minScore = 0.3) {
   });
 }
 
-export async function listDocuments() {
-  return apiClient('/api/documents');
+export async function listDocuments(signal) {
+  return apiClient('/api/documents', {signal});
 }
 
-export async function uploadDocument(file) {
+export async function uploadDocument(file, signal) {
   const formData = new FormData();
   formData.append('file', file);
   return apiClient('/api/documents', {
-    method: 'POST',
+    signal, method: 'POST',
     body: formData
   });
 }
 
-export async function deleteDocument(docId) {
+export async function deleteDocument(docId, signal) {
   return apiClient(`/api/documents/${docId}`, {
-    method: 'DELETE'
+    signal, method: 'DELETE'
   });
 }

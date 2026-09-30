@@ -1,8 +1,8 @@
 import { apiClient } from './client';
 
-export async function processQuery(query, userContext = '', conversationId = null) {
+export async function processQuery(query, userContext = '', conversationId = null, signal) {
   return apiClient('/api/process', {
-    method: 'POST',
+    signal, method: 'POST',
     body: {
       query,
       user_context: userContext,
