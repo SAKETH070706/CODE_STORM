@@ -1,41 +1,90 @@
 import React, { useEffect, useState } from 'react';
+import { checkReadiness, checkHealth } from '../api/health';
 
 export default function Navbar() {
-  const [isOnline, setIsOnline] = useState(false);
+  const [systemStatus, setSystemStatus] = useState('CHECKING'); // ONLINE | DEGRADED | OFFLINE | CHECKING
+  const [statusDetail, setStatusDetail] = useState('Connecting to backend...');
+  const [providerInfo, setProviderInfo] = useState({
+    db: 'PostgreSQL',
+    vector: 'Pinecone',
+    primaryLlm: 'Groq',
+    fallbackLlm: 'Gemini'
+  });
 
   useEffect(() => {
-    const checkHealth = async () => {
+    let isMounted = true;
+
+    const pollHealth = async () => {
       try {
-        const res = await fetch('http://localhost:8000/health');
-        if (res.ok) setIsOnline(true);
-        else setIsOnline(false);
+        const readyData = await checkReadiness();
+        if (!isMounted) return;
+
+        if (readyData.status === 'ready') {
+          setSystemStatus('ONLINE');
+          setStatusDetail('All Systems Operational');
+        } else if (readyData.status === 'degraded') {
+          setSystemStatus('DEGRADED');
+          const details = [];
+          if (readyData.vector_store?.status !== 'connected') details.push('Pinecone (Local Fallback)');
+          if (readyData.database?.status !== 'connected') details.push('Database Degraded');
+          setStatusDetail(details.length > 0 ? details.join(' | ') : 'Running in Degraded Mode');
+        } else {
+          setSystemStatus('OFFLINE');
+          setStatusDetail('Backend Not Ready');
+        }
       } catch (err) {
-        setIsOnline(false);
+        if (!isMounted) return;
+        // Fallback check to basic health
+        try {
+          await checkHealth();
+          setSystemStatus('DEGRADED');
+          setStatusDetail('API Alive (Dependencies Starting)');
+        } catch {
+          setSystemStatus('OFFLINE');
+          setStatusDetail('Backend Disconnected');
+        }
       }
     };
 
-    checkHealth();
-    const interval = setInterval(checkHealth, 5000);
-    return () => clearInterval(interval);
+    pollHealth();
+    const interval = setInterval(pollHealth, 6000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
+
+  const getStatusColorClass = () => {
+    if (systemStatus === 'ONLINE') return 'online';
+    if (systemStatus === 'DEGRADED') return 'degraded';
+    if (systemStatus === 'OFFLINE') return 'offline';
+    return 'checking';
+  };
 
   return (
     <header className="navbar">
       <div className="brand">
-        <span className="brand-logo">CODE_STORM</span>
-        <span className="brand-tag">GenAI Platform</span>
+        <div className="brand-icon">⚡</div>
+        <div>
+          <div className="brand-logo">CODE_STORM</div>
+          <div className="brand-tag">Production GenAI Platform</div>
+        </div>
       </div>
 
       <div className="nav-badges">
-        <div className="model-pill">
-          Groq: <span>qwen3.8-27b</span>
+        <div className="model-pill" title="Primary High-Speed LLM Inference">
+          Groq: <span>llama-3.3-70b</span>
         </div>
-        <div className="model-pill">
-          Gemini: <span>3.5-flash</span>
+        <div className="model-pill" title="Resilient Fallback LLM Inference">
+          Gemini: <span>2.5-flash</span>
         </div>
-        <div className="status-badge">
-          <span className={`status-dot ${isOnline ? 'online' : 'offline'}`}></span>
-          {isOnline ? 'Backend Connected' : 'Connecting to API (Port 8000)...'}
+        <div className="model-pill" title="Vector Database">
+          Vector: <span>Pinecone</span>
+        </div>
+
+        <div className="status-badge" title={statusDetail}>
+          <span className={`status-dot ${getStatusColorClass()}`}></span>
+          <span className="status-text">{systemStatus}</span>
         </div>
       </div>
     </header>

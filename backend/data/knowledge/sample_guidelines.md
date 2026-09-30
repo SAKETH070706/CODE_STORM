@@ -1,13 +1,16 @@
-# Sample Knowledge Guidelines
+# CODE_STORM Architecture & Hackathon Guidelines
 
-## Architecture Overview
-CODE_STORM is a resilient GenAI hackathon architecture built with FastAPI, React (Vite + Vanilla CSS), local ChromaDB embeddings, and a dual-provider LLM cascade.
+## System Overview
+CODE_STORM is a production-grade full-stack GenAI hackathon platform engineered with React (Vite + Vanilla CSS), FastAPI, Aiven PostgreSQL, Pinecone Vector Database, and an enterprise multi-provider LLM cascade combining Groq and Google Gemini.
 
-## Multi-Provider Resilience
-The system uses Groq for high-speed sub-second inference with automatic failover to Google Gemini on any 429/503 errors. All embeddings are processed locally via sentence-transformers, guaranteeing zero downtime even during intermittent network drops.
+## Two-Tier Database Architecture
+The platform strictly separates relational application state from vector representations:
+1. **Aiven PostgreSQL**: Manages persistent users, conversations, chat messages, document metadata, extraction jobs, and audit events using SQLAlchemy 2.0 asyncpg with robust connection pooling.
+2. **Pinecone Vector Database**: Dedicated to semantic retrieval, storing high-dimensional document chunk embeddings with metadata attribution and SHA-256 deduplication.
 
-## Hackathon Pitch Strategy
-When presenting to judges:
-1. Emphasize that the system runs live and never crashes due to the multi-provider cascade.
-2. Demonstrate real-time multimodal extraction from images.
-3. Show local vector search running without external cloud dependencies.
+## Dual-Provider LLM Resilience
+The system prioritizes Groq for sub-second, high-throughput inference (Llama 3.3 70B) with automated, bounded failover to Google Gemini (Gemini 2.5 Flash) upon encountering transient rate limits (HTTP 429), server overload (HTTP 503), or network timeouts.
+
+## Security & Multimodal Extraction
+1. **Two-Tier Safety Scaffold**: Tier 0 deterministic regex scan (<5ms) protects against prompt injections, system override attempts, and dangerous inputs before expensive operations occur. Tier 1 performs semantic policy classification.
+2. **Multimodal Pydantic Extraction**: Strictly extracts typed schema data from text and images with 1-attempt feedback-driven error correction.
