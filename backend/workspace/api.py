@@ -1,0 +1,507 @@
+﻿"""PostgreSQL workspace API; no schema creation or destructive startup migrations."""
+import json
+import os
+import time
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Literal
+from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, Form, Query, Header
+from fastapi.security import HTTPBearer
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
+from starlette.responses import Response, JSONResponse
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy import select, text
+from pydantic import Field
+import config  # loads environment without exposing secrets
+from workspace.models import *
+from workspace.identity import resolve, require, login, token_for, signing_secret, Identity, PERMISSIONS
+from workspace.rules import Strict, RuleSet, CAPABILITIES
+from workspace.audit import append, verify
+from workspace.sources import LocalStorage
+from workspace.admin import Administration
+from workspace.runtime import Runtime
+from workspace.compiler import Compiler
+
+BASE = Path(__file__).resolve().parents[1]
+bearer = HTTPBearer(auto_error=False)
+
+
+def create_app(database=None):
+    @asynccontextmanager
+    async def lifespan(app):
+        signing_secret()
+        db = database or Database()
+        app.state.db = db
+        app.state.admin = Administration(db, LocalStorage(BASE / "data/private_documents"))
+        app.state.runtime = Runtime(db, BASE / "data/workspace_reports", BASE / "data/demo_sales.db")
+        app.state.compiler = Compiler(db)
+        # Recovery must not race a live worker. Dedicated PostgreSQL session owns lease.
+        lease = db.engine.connect()
+        try:
+            if db.engine.dialect.name == "postgresql":
+                if not lease.scalar(text("SELECT pg_try_advisory_lock(718502641)")):
+                    raise RuntimeError("One workspace API process per database is supported")
+            with db.transaction() as s:
+                s.execute(select(Organization.id).limit(1))  # migrations required
+            with db.transaction() as s:
+                org_ids = list(s.scalars(select(Organization.id)))
+            for org in org_ids:
+                with db.transaction(org) as s:
+                    if not verify(s, org)["valid"]:
+                        raise RuntimeError("Organization audit verification failed")
+                    for job in listed(s, CompilationJob, org, 10000):
+                        if job.state in {"QUEUED", "RUNNING"}:
+                            job.state = "INTERRUPTED"
+                            append(s, org, "system", "compilation.interrupted", {"job_id": job.id})
+                    for action in listed(s, Action, org, 10000):
+                        if action.state in {"EXECUTING", "AUTHORIZED", "APPROVED", "REVALIDATING"}:
+                            app.state.runtime.change(s, Identity("system", org, "system"), action, "OUTCOME_UNKNOWN", executed=None, reason_code="INTERRUPTED")
+            yield
+        finally:
+            if db.engine.dialect.name == "postgresql":
+                lease.execute(text("SELECT pg_advisory_unlock(718502641)"))
+            lease.close()
+    app = FastAPI(title="PNG5 Company Governance", lifespan=lifespan)
+    app.add_middleware(CORSMiddleware, allow_origins=[x for x in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if x and x != "*"],
+                       allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type", "Idempotency-Key"])
+    # Separate limit middleware avoids routing new identities through the legacy audit database.
+    @app.middleware("http")
+    async def body_limit(request, call_next):
+        import asyncio
+        cap = 2 * 1024 * 1024 + 65536 if request.url.path == "/api/sources/upload" else 512000
+        data = bytearray()
+        try:
+            async with asyncio.timeout(10):
+                async for chunk in request.stream():
+                    data.extend(chunk)
+                    if len(data) > cap:
+                        return JSONResponse({"detail": "Request too large"}, 413)
+        except TimeoutError:
+            return JSONResponse({"detail": "Request deadline exceeded"}, 408)
+        request._body = bytes(data)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    def identity(request: Request, credentials=Depends(bearer)):
+        if not credentials:
+            raise HTTPException(401, "Authentication required")
+        with request.app.state.db.transaction() as s:
+            return resolve(s, credentials.credentials)
+
+    def admin(request: Request):
+        return request.app.state.admin
+
+    def runtime(request: Request):
+        return request.app.state.runtime
+
+    @app.exception_handler(Exception)
+    async def unavailable(request, error):
+        return JSONResponse({"detail": "Service unavailable; inspect server configuration or retry status lookup"}, 503)
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid(request, error):
+        return await rejected(request, HTTPException(422, "Invalid request schema"))
+
+    @app.exception_handler(HTTPException)
+    async def rejected(request, error):
+        token = request.headers.get("authorization", "").removeprefix("Bearer ")
+        def record():
+            try:
+                with request.app.state.db.transaction() as s:
+                    who = resolve(s, token)
+            except Exception:
+                return
+            with request.app.state.db.transaction(who.organization_id) as s:
+                append(s, who.organization_id, who.principal_id, "request.denied", {"status": error.status_code})
+        try:
+            if 400 <= error.status_code < 500:
+                await run_in_threadpool(record)
+        except Exception:
+            return JSONResponse({"detail": "Denial audit unavailable"}, 503)
+        return JSONResponse({"detail": error.detail}, error.status_code, headers=error.headers)
+
+    @app.post("/api/credentials/{credential_id}/revoke")
+    def revoke_key(credential_id: str, request: Request, who=Depends(identity)):
+        require(who, "agents")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            key = s.scalar(select(Credential).where(Credential.id == credential_id, Credential.organization_id == who.organization_id))
+            if key is None:
+                raise HTTPException(404, "Credential not found")
+            key.active = False
+            append(s, who.organization_id, who.principal_id, "credential.revoked", {"credential_id": key.id})
+        return {"revoked": True}
+
+    @app.post("/api/members/{membership_id}/revoke")
+    def revoke_member(membership_id: str, request: Request, who=Depends(identity)):
+        require(who, "members")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            member = s.scalar(select(Membership).where(Membership.id == membership_id, Membership.organization_id == who.organization_id))
+            if member is None:
+                raise HTTPException(404, "Membership not found")
+            if member.user_id == who.principal_id:
+                raise HTTPException(409, "Cannot revoke your own membership")
+            member.active = False
+            append(s, who.organization_id, who.principal_id, "membership.revoked", {"membership_id": member.id})
+        return {"revoked": True}
+
+    @app.get("/api/policy-passages")
+    def supporting_passages(request: Request, q: str = Query(min_length=1, max_length=500), who=Depends(identity)):
+        require_any(who, {"sources", "drafts", "publish"})
+        from workspace.retrieval import passages
+        return passages(request.app.state.db, who.organization_id, q)
+
+    @app.post("/api/policy-passages/index")
+    def index_passages(request: Request, who=Depends(identity)):
+        require(who, "sources")
+        from workspace.retrieval import passages
+        result = passages(request.app.state.db, who.organization_id, "policy", True)
+        with request.app.state.db.transaction(who.organization_id) as s:
+            append(s, who.organization_id, who.principal_id, "sources.indexed", {"mode": result["mode"]})
+        return result
+
+    @app.get("/api/audit/legacy")
+    def legacy_audit(request: Request, who=Depends(identity), limit: int = Query(100, ge=1, le=200)):
+        require(who, "audit")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            streams = list(s.scalars(select(LegacyStream).where(LegacyStream.organization_id == who.organization_id)))
+            return [{"id": r.id, "label": "Legacy SQLite audit stream; original event bytes and hashes", "import_digest": r.import_digest, "event_count": len(r.events), "events": r.events[-limit:]} for r in streams]
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok", "mode": "workspace", "delivery_mode": "simulated"}
+
+    @app.get("/ready")
+    def ready(request: Request):
+        with request.app.state.db.transaction() as s:
+            s.execute(select(Organization.id).limit(1))
+        return {"status": "ready"}
+
+    import threading
+    login_lock = threading.Lock()
+    login_attempts = {}
+
+    @app.post("/api/session/login")
+    def sign_in(payload: Login, request: Request):
+        address = request.client.host if request.client else "local"
+        with login_lock:
+            now = time.monotonic()
+            for ip in list(login_attempts):
+                login_attempts[ip] = [t for t in login_attempts[ip] if now - t < 60]
+                if not login_attempts[ip]:
+                    del login_attempts[ip]
+            history = login_attempts.setdefault(address, [])
+            if len(history) >= 10 or len(login_attempts) > 1024:
+                raise HTTPException(429, "Login rate limit; retry later")
+            history.append(now)
+        with request.app.state.db.transaction() as s:
+            user, memberships = login(s, payload.email, payload.password)
+            if not memberships:
+                raise HTTPException(403, "No active workspace membership")
+            return {"access_token": token_for(user.id, memberships[0].organization_id), "expires_in": 900}
+
+    @app.get("/api/session")
+    def session(request: Request, who=Depends(identity)):
+        if who.kind != "human":
+            raise HTTPException(403, "Human session required")
+        with request.app.state.db.transaction() as s:
+            members = list(s.scalars(select(Membership).where(Membership.user_id == who.principal_id, Membership.active.is_(True))))
+            return {"principal_id": who.principal_id, "organization_id": who.organization_id, "permissions": sorted(who.permissions), "groups": sorted(who.groups),
+                    "workspaces": [{"id": m.organization_id, "name": s.get(Organization, m.organization_id).name} for m in members],
+                    "can_create_workspaces": s.get(User, who.principal_id).can_create_workspaces}
+
+    @app.post("/api/session/workspace")
+    def switch(payload: WorkspaceSelection, request: Request, who=Depends(identity)):
+        if who.kind != "human":
+            raise HTTPException(403, "Human session required")
+        with request.app.state.db.transaction() as s:
+            member = s.scalar(select(Membership).where(Membership.user_id == who.principal_id, Membership.organization_id == payload.organization_id, Membership.active.is_(True)))
+            if not member:
+                raise HTTPException(403, "Workspace membership required")
+        return {"access_token": token_for(who.principal_id, member.organization_id), "expires_in": 900}
+
+    @app.post("/api/workspaces")
+    def workspace(payload: Named, who=Depends(identity), service=Depends(admin)):
+        return service.create_workspace(who, payload.name)
+
+    @app.get("/api/members")
+    def members(who=Depends(identity), service=Depends(admin)):
+        return service.members(who)
+
+    @app.post("/api/members")
+    def member(payload: MemberInput, who=Depends(identity), service=Depends(admin)):
+        return service.add_member(who, **payload.model_dump())
+
+    @app.get("/api/overview")
+    def overview(request: Request, who=Depends(identity)):
+        if who.kind != "human":
+            raise HTTPException(403, "Human session required")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            org = s.get(Organization, who.organization_id)
+            # Dashboard counts are bounded to the visible recent window, explicitly labeled.
+            actions = listed(s, Action, org.id) if {"activity", "review", "audit"} & who.permissions else []
+            return {"active_policy_id": org.active_policy_id, "agents": len(listed(s, Agent, org.id)), "connectors": len(listed(s, Connector, org.id)),
+                    "counts": {d: sum(a.data["response"]["decision"] == d for a in actions) for d in ("ALLOW", "BLOCK", "ESCALATE")},
+                    "pending": sum(a.state == "REVIEW_REQUIRED" and a.data["expires_at"] > time.time() for a in actions),
+                    "window": "latest 200 actions", "capabilities": {k: sorted(v) for k,v in CAPABILITIES.items()}}
+
+    @app.get("/api/registry")
+    def registry(request: Request, who=Depends(identity)):
+        if who.kind != "human":
+            raise HTTPException(403, "Human session required")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            return {name: [public(r) for r in listed(s, model, who.organization_id)] for name, model in (("agents", Agent), ("tasks", Task), ("connectors", Connector), ("groups", ReviewerGroup))}
+
+    @app.post("/api/agents")
+    def agent(payload: AgentInput, who=Depends(identity), service=Depends(admin)):
+        return service.registry(who, Agent, {"role": payload.role}, payload.name, payload.id)
+
+    @app.post("/api/tasks")
+    def task(payload: TaskInput, who=Depends(identity), service=Depends(admin)):
+        return service.registry(who, Task, payload.model_dump(exclude={"name", "id"}), payload.name, payload.id)
+
+    @app.post("/api/connectors")
+    def connector(payload: ConnectorInput, who=Depends(identity), service=Depends(admin)):
+        return service.registry(who, Connector, payload.model_dump(exclude={"name", "id"}), payload.name, payload.id)
+
+    @app.post("/api/groups")
+    def group(payload: Named, who=Depends(identity), service=Depends(admin)):
+        return service.registry(who, ReviewerGroup, {}, payload.name)
+
+    @app.post("/api/agents/{agent_id}/key")
+    def credential(agent_id: str, who=Depends(identity), service=Depends(admin)):
+        return service.key(who, agent_id)
+
+    @app.post("/api/agents/{agent_id}/revoke")
+    def revoke(agent_id: str, who=Depends(identity), service=Depends(admin)):
+        return service.revoke(who, agent_id)
+
+    @app.post("/api/connectors/{connector_id}/test")
+    def connection_test(connector_id: str, request: Request, who=Depends(identity)):
+        require(who, "connectors")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            row = owned(s, Connector, who.organization_id, connector_id)
+            kind = row.data["kind"]
+        if kind in {"demo_sales", "demo_support"}:
+            import sqlite3
+            c = sqlite3.connect((BASE / "data/demo_sales.db").resolve().as_uri() + "?mode=ro", uri=True, timeout=2)
+            try:
+                c.execute("SELECT month FROM sales_summary LIMIT 1" if kind == "demo_sales" else "SELECT status FROM support_summary LIMIT 1").fetchone()
+            finally:
+                c.close()
+        return {"status": "available", "mode": "simulated delivery" if kind == "simulated_delivery" else "demo connector" if kind.startswith("demo_") else "local protected report storage"}
+
+    @app.post("/api/sources/upload")
+    def upload(file: UploadFile = File(...), previous_id: str | None = Form(None), who=Depends(identity), service=Depends(admin)):
+        return service.source(who, file.filename or "source.txt", file.file.read(2 * 1024 * 1024 + 1), previous_id=previous_id or None)
+
+    @app.post("/api/sources/url")
+    def url(payload: URLInput, who=Depends(identity), service=Depends(admin)):
+        return service.source(who, "policy-page.txt", url=payload.url, previous_id=payload.previous_id)
+
+    @app.get("/api/sources")
+    def sources(request: Request, who=Depends(identity)):
+        require_any(who, {"sources", "drafts", "publish"})
+        with request.app.state.db.transaction(who.organization_id) as s:
+            return [{**public(r), "data": {k:v for k,v in r.data.items() if k != "storage_key"}} for r in listed(s, Source, who.organization_id)]
+
+    @app.get("/api/sources/{source_id}/download")
+    def download(source_id: str, request: Request, who=Depends(identity), service=Depends(admin)):
+        require_any(who, {"sources", "drafts", "publish"})
+        with request.app.state.db.transaction(who.organization_id) as s:
+            row = owned(s, Source, who.organization_id, source_id)
+            content = service.storage.read(who.organization_id, row.data["storage_key"])
+            import hashlib
+            if hashlib.sha256(content).hexdigest() != row.data["content_hash"]:
+                raise HTTPException(409, "Source content integrity check failed")
+        return Response(content, media_type="application/octet-stream", headers={"Content-Disposition": 'attachment; filename="policy-source"'})
+
+    @app.get("/api/policies")
+    def policies(request: Request, who=Depends(identity)):
+        require_any(who, {"sources", "drafts", "publish"})
+        with request.app.state.db.transaction(who.organization_id) as s:
+            return [public(r) for r in listed(s, Policy, who.organization_id)]
+
+    @app.post("/api/policies")
+    def draft(payload: DraftInput, who=Depends(identity), service=Depends(admin)):
+        return service.draft(who, payload.rules, payload.name, payload.id, payload.expected_revision)
+
+    @app.post("/api/policies/{policy_id}/validate")
+    def validate(policy_id: str, who=Depends(identity), service=Depends(admin)):
+        return service.validate(who, policy_id)
+
+    @app.post("/api/policies/{policy_id}/publish")
+    def publish(policy_id: str, payload: PublishInput, who=Depends(identity), service=Depends(admin)):
+        return service.publish(who, policy_id, payload.expected_active_policy_id)
+
+    @app.post("/api/policies/{policy_id}/clone")
+    def clone(policy_id: str, who=Depends(identity), service=Depends(admin)):
+        return service.clone(who, policy_id)
+
+    @app.post("/api/policies/{policy_id}/archive")
+    def archive(policy_id: str, request: Request, who=Depends(identity)):
+        require(who, "drafts")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            row = owned(s, Policy, who.organization_id, policy_id)
+            if row.state == "PUBLISHED":
+                raise HTTPException(409, "Cannot archive active policy")
+            row.state = "ARCHIVED"; append(s, who.organization_id, who.principal_id, "policy.archived", {"policy_id": row.id})
+            return public(row)
+
+    @app.post("/api/compilations")
+    def compile_policy(payload: CompileInput, request: Request, who=Depends(identity)):
+        return request.app.state.compiler.start(who, **payload.model_dump())
+
+    @app.get("/api/compilations")
+    def jobs(request: Request, who=Depends(identity)):
+        require(who, "drafts")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            return [public(r) for r in listed(s, CompilationJob, who.organization_id)]
+
+    async def action_body(request):
+        from api.governor import body
+        return await body(request)
+
+    @app.post("/api/authorize")
+    async def authorize(request: Request, who=Depends(identity), service=Depends(runtime)):
+        return await run_in_threadpool(service.submit, who, await action_body(request), None, True)
+
+    @app.post("/api/actions")
+    async def execute(request: Request, who=Depends(identity), service=Depends(runtime), idempotency_key: str | None = Header(None)):
+        return await run_in_threadpool(service.submit, who, await action_body(request), idempotency_key)
+
+    @app.post("/api/playground/{agent_id}")
+    async def playground(agent_id: str, request: Request, who=Depends(identity), service=Depends(runtime)):
+        require(who, "playground")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            agent = owned(s, Agent, who.organization_id, agent_id)
+            proxy = Identity(agent.id, who.organization_id, "agent", agent.data["role"])
+        return await run_in_threadpool(service.submit, proxy, await action_body(request), None, False, who.principal_id)
+
+    @app.get("/api/actions")
+    def actions(request: Request, who=Depends(identity), service=Depends(runtime)):
+        require_any(who, {"activity", "review", "audit"})
+        with request.app.state.db.transaction(who.organization_id) as s:
+            ids = [r.id for r in listed(s, Action, who.organization_id)]
+        return [service.status(who, rid) for rid in ids]
+
+    @app.get("/api/artifacts/{artifact_id}")
+    def artifact_metadata(artifact_id: str, request: Request, who=Depends(identity)):
+        with request.app.state.db.transaction(who.organization_id) as s:
+            row = owned(s, Artifact, who.organization_id, artifact_id)
+            if who.kind == "agent" and row.data["principal_id"] != who.principal_id:
+                raise HTTPException(404, "Artifact not found")
+            if who.kind == "human":
+                require_any(who, {"activity", "audit", "review"})
+            return {**public(row), "data": {k:v for k,v in row.data.items() if k != "filename"}}
+
+    @app.get("/api/outbox")
+    def simulated_outbox(request: Request, who=Depends(identity)):
+        require(who, "audit")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            return [public(r) for r in listed(s, Outbox, who.organization_id)]
+
+    @app.post("/api/actions/{request_id}/cancel")
+    def cancel_action(request_id: str, request: Request, who=Depends(identity), service=Depends(runtime)):
+        with request.app.state.db.transaction(who.organization_id) as s:
+            row = owned(s, Action, who.organization_id, request_id)
+            if row.name != who.principal_id and row.data.get("initiated_by") != who.principal_id:
+                raise HTTPException(403, "Only the initiating principal may cancel")
+            if row.state not in {"AUTHORIZED", "REVIEW_REQUIRED", "REVALIDATING"}:
+                raise HTTPException(409, "Action cannot be cancelled")
+            return service.change(s, who, row, "CANCELLED", decision="BLOCK", reason_code="CANCELLED")
+
+    @app.get("/api/actions/{request_id}")
+    def action(request_id: str, who=Depends(identity), service=Depends(runtime)):
+        return service.status(who, request_id)
+
+    @app.get("/api/reviews")
+    def reviews(request: Request, who=Depends(identity), service=Depends(runtime)):
+        require(who, "review")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            ids = [r.id for r in listed(s, Action, who.organization_id) if r.state == "REVIEW_REQUIRED" and not r.data["evaluation_only"] and set(r.data["response"]["reviewer_groups"]) <= who.groups]
+        return [item for item in (service.status(who, rid) for rid in ids) if item["state"] == "REVIEW_REQUIRED"]
+
+    @app.post("/api/reviews/{request_id}/{decision}")
+    def review(request_id: str, decision: Literal["approve", "reject"], payload: ReviewInput, who=Depends(identity), service=Depends(runtime)):
+        return service.review(who, request_id, decision == "approve", payload.comment)
+
+    @app.get("/api/audit")
+    def audit(request: Request, who=Depends(identity), q: str = Query("", max_length=100), limit: int = Query(100, ge=1, le=200)):
+        require(who, "audit")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            statement = select(AuditEvent).where(AuditEvent.organization_id == who.organization_id)
+            if q:
+                statement = statement.where(AuditEvent.event_json.contains(q, autoescape=True))
+            rows = s.scalars(statement.order_by(AuditEvent.sequence.desc()).limit(limit))
+            return [{**json.loads(r.event_json), "previous_hash": r.previous_hash, "event_hash": r.event_hash} for r in rows]
+
+    @app.get("/api/audit/checkpoint")
+    @app.get("/api/audit/verify")
+    def integrity(request: Request, who=Depends(identity)):
+        require(who, "audit")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            return verify(s, who.organization_id)
+
+    @app.post("/api/audit/verify")
+    def compare(payload: Checkpoint, request: Request, who=Depends(identity)):
+        require(who, "audit")
+        with request.app.state.db.transaction(who.organization_id) as s:
+            return verify(s, who.organization_id, payload.model_dump())
+
+    return app
+
+
+def require_any(who, permissions):
+    if who.kind != "human" or not who.permissions & permissions:
+        raise HTTPException(403, "Workspace permission required")
+
+class Named(Strict):
+    name: str = Field(min_length=1, max_length=100)
+class Login(Strict):
+    email: str = Field(min_length=3, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
+class WorkspaceSelection(Strict):
+    organization_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+class MemberInput(Strict):
+    email: str = Field(min_length=3, max_length=200)
+    password: str | None = Field(default=None, min_length=12, max_length=200)
+    permissions: list[str] = Field(max_length=12)
+    groups: list[str] = Field(default_factory=list, max_length=20)
+class AgentInput(Named):
+    id: str | None = None
+    role: str = Field(pattern=r"^[a-z][a-z0-9_-]{1,49}$")
+class TaskInput(Named):
+    id: str | None = None
+    roles: list[str] = Field(min_length=1, max_length=20)
+    resources: list[str] = Field(default_factory=list, max_length=30)
+    agents: list[str] = Field(default_factory=list, max_length=100)
+class ConnectorInput(Named):
+    id: str | None = None
+    kind: Literal["demo_sales", "demo_support", "report_storage", "simulated_delivery"]
+    destinations: list[str] = Field(default_factory=list, max_length=20)
+class URLInput(Strict):
+    url: str = Field(min_length=10, max_length=2000)
+    previous_id: str | None = None
+class DraftInput(Named):
+    id: str | None = None
+    expected_revision: int | None = None
+    rules: list[dict] = Field(max_length=100)
+class PublishInput(Strict):
+    expected_active_policy_id: str | None
+class CompileInput(Strict):
+    source_id: str
+    policy_id: str
+    mode: Literal["manual", "semantic"] = "manual"
+    configuration: dict
+class ReviewInput(Strict):
+    comment: str = Field(default="", max_length=500)
+class Checkpoint(Strict):
+    organization_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    event_count: int = Field(ge=0)
+    head_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+app = create_app()
+

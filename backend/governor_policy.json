@@ -1,0 +1,11 @@
+{
+  "version": "png5-v2",
+  "weights": {"impact": 20, "sensitivity": 20, "blast_radius": 10, "external_egress": 25, "provenance_uncertainty": 15, "recent_denials": 10},
+  "thresholds": {"medium": 25, "high": 50, "critical": 80},
+  "approval_seconds": 900,
+  "destinations": ["review@example.test"],
+  "export_sensitivities": ["internal"],
+  "semantic_enabled": false,
+  "semantic_required_at": 50,
+  "semantic_unavailable": "ESCALATE"
+}

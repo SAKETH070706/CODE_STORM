@@ -27,3 +27,13 @@ frontend/.vite/
 chroma_store/
 backend/chroma_store/
 .chroma/
+# Governance runtime artifacts
+*.db-wal
+*.db-shm
+backend/data/*.lock
+backend/data/reports/
+backend/data/private_documents/
+backend/data/workspace_reports/
+backend/data/*backup*
+frontend/playwright-report/
+frontend/test-results/

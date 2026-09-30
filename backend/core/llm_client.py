@@ -72,17 +72,25 @@ def call_llm(
     json_mode: bool = False,
     max_tokens: int = 1000,
     image_bytes: Optional[bytes] = None,
-    mime_type: str = "image/png"
+    mime_type: str = "image/png",
+    deadline_seconds: float = 15.0
 ) -> LLMResult:
     """
     Executes an LLM call across Groq with automatic cascade to Gemini.
     Retries only on transient errors (429/503/timeout), with capped backoff.
     """
+    deadline = time.monotonic() + min(max(deadline_seconds, 0.01), 60.0)
+    def remaining():
+        left = deadline - time.monotonic()
+        if left <= 0:
+            raise TimeoutError("Overall provider deadline exhausted")
+        return min(HTTP_TIMEOUT_SECONDS, left)
+
     # 1. Tier 1: Groq Cascade
     if GROQ_API_KEY:
         try:
             from groq import Groq
-            groq_client = Groq(api_key=GROQ_API_KEY, timeout=HTTP_TIMEOUT_SECONDS)
+            groq_client = Groq(api_key=GROQ_API_KEY, timeout=remaining(), max_retries=0)
             groq_model_list = GROQ_VISION_MODELS if image_bytes else GROQ_MODELS
 
             for model_id in groq_model_list:
@@ -109,6 +117,7 @@ def call_llm(
                         if json_mode:
                             kwargs["response_format"] = {"type": "json_object"}
 
+                        kwargs["timeout"] = remaining()
                         resp = groq_client.chat.completions.create(**kwargs)
                         raw_text = (resp.choices[0].message.content or "").strip()
 
@@ -141,7 +150,7 @@ def call_llm(
                         if _is_transient_error(err_str) and attempt < (MAX_RETRIES_PER_MODEL - 1):
                             sleep_time = 0.5 * (attempt + 1)
                             logger.warning(f"Groq {model_id} transient error ({err_str[:80]}), retrying in {sleep_time}s...")
-                            time.sleep(sleep_time)
+                            time.sleep(min(sleep_time, remaining()))
                             continue
                         logger.warning(f"Groq {model_id} failed: {err_str[:120]}. Failing to next model.")
                         break
@@ -156,7 +165,7 @@ def call_llm(
 
             g_client = genai.Client(
                 api_key=GEMINI_API_KEY,
-                http_options={"timeout": int(HTTP_TIMEOUT_SECONDS * 1000)}  # google-genai expects milliseconds
+                http_options={"timeout": int(remaining() * 1000)}  # google-genai expects milliseconds
             )
 
             for gem_model in GEMINI_MODELS:
@@ -166,17 +175,18 @@ def call_llm(
                         if image_bytes:
                             contents.append(types.Part.from_bytes(data=image_bytes, mime_type=mime_type))
                         
-                        prompt_full = f"{system_prompt}\n\n{user_prompt}" if system_prompt else user_prompt
-                        contents.append(prompt_full)
+                        contents.append(user_prompt)
 
                         config_args: Dict[str, Any] = {
                             "temperature": temperature,
                             "max_output_tokens": max_tokens,
+                            "system_instruction": system_prompt,
                         }
                         if json_mode:
                             config_args["response_mime_type"] = "application/json"
 
                         config = types.GenerateContentConfig(**config_args)
+                        g_client = genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": max(1, int(remaining() * 1000))})
                         g_resp = g_client.models.generate_content(
                             model=gem_model,
                             contents=contents,
@@ -213,7 +223,7 @@ def call_llm(
                         if _is_transient_error(err_str) and attempt < (MAX_RETRIES_PER_MODEL - 1):
                             sleep_time = 0.5 * (attempt + 1)
                             logger.warning(f"Gemini {gem_model} transient error, retrying in {sleep_time}s...")
-                            time.sleep(sleep_time)
+                            time.sleep(min(sleep_time, remaining()))
                             continue
                         logger.warning(f"Gemini {gem_model} failed: {err_str[:120]}. Failing to next model.")
                         break

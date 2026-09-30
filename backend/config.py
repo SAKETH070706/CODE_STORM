@@ -39,24 +39,10 @@ def _env_list(name: str, default: list) -> list:
     items = [x.strip() for x in raw.split(",") if x.strip()]
     return items or default
 
-GROQ_MODELS = _env_list("GROQ_MODELS", [
-    "qwen/qwen3.8-27b",        # Primary: fast, strong reasoning, multimodal support
-    "openai/gpt-oss-120b",     # Heavy reasoning fallback
-    "openai/gpt-oss-20b",      # Fast lightweight fallback
-    "llama-3.3-70b-versatile"  # High-reliability Llama fallback
-])
-
-GROQ_VISION_MODELS = _env_list("GROQ_VISION_MODELS", [
-    "qwen/qwen3.8-27b"
-])
-
-GEMINI_MODELS = _env_list("GEMINI_MODELS", [
-    "gemini-3.5-flash",        # Primary fast multimodal endpoint
-    "gemini-flash-latest",     # Stable alias pointer
-    "gemini-3.1-flash-lite",   # Low-latency speed tier
-    "gemini-3.8-flash"         # Extended capabilities tier
-])
-
+# Explicit account-specific model IDs; no assumed model availability.
+GROQ_MODELS = _env_list("GROQ_MODELS", [])
+GROQ_VISION_MODELS = _env_list("GROQ_VISION_MODELS", [])
+GEMINI_MODELS = _env_list("GEMINI_MODELS", [])
 # ---------------------------------------------------------------------------
 # Resilience & Timeout Policies
 # ---------------------------------------------------------------------------

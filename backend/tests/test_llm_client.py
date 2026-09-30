@@ -55,3 +55,21 @@ def test_service_unavailable_when_all_fail():
         result = call_llm(system_prompt="Test", user_prompt="Ping")
         assert result.success is False
         assert result.error == "SERVICE_UNAVAILABLE"
+
+@pytest.fixture(autouse=True)
+def configured_mock_models(monkeypatch):
+    # Unit tests do not depend on developer secrets or provider model availability.
+    monkeypatch.setattr("core.llm_client.GROQ_API_KEY", "offline-test-key")
+    monkeypatch.setattr("core.llm_client.GEMINI_API_KEY", "offline-test-key")
+    monkeypatch.setattr("core.llm_client.GROQ_MODELS", ["mock-groq"])
+    monkeypatch.setattr("core.llm_client.GEMINI_MODELS", ["mock-gemini"])
+
+
+def test_gemini_system_instruction_is_separate():
+    with patch("groq.Groq", side_effect=RuntimeError("offline")), patch("google.genai.Client") as client:
+        client.return_value.models.generate_content.return_value.text = "ok"
+        result = call_llm("policy", "untrusted content")
+        assert result.success
+        kwargs = client.return_value.models.generate_content.call_args.kwargs
+        assert kwargs["contents"] == ["untrusted content"]
+        assert kwargs["config"].system_instruction == "policy"
