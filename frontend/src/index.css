@@ -4,7 +4,7 @@
   --bg-card-hover: rgba(30, 41, 59, 0.85);
   --bg-glass: rgba(255, 255, 255, 0.03);
   --border-glass: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(99, 102, 241, 0.5);
+  --border-focus: rgba(99, 102, 241, 0.6);
 
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
@@ -18,14 +18,20 @@
   --accent-rose: #f43f5e;
 
   --font-heading: 'Outfit', sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -39,6 +45,14 @@ body {
     radial-gradient(circle at 85% 25%, rgba(6, 182, 212, 0.10) 0%, transparent 40%),
     radial-gradient(circle at 50% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
   background-attachment: fixed;
+  line-height: 1.5;
+}
+
+/* Custom Accessible Focus Rings */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 /* Custom Scrollbar */
@@ -61,10 +75,21 @@ button {
   font-family: var(--font-body);
   cursor: pointer;
   border: none;
-  outline: none;
+  background: none;
 }
 
-input, textarea {
+input, textarea, select {
   font-family: var(--font-body);
-  outline: none;
+}
+
+/* Reduced Motion Support (WCAG 2.1 AA) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

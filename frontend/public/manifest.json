@@ -1,0 +1,17 @@
+{
+  "short_name": "CODE_STORM",
+  "name": "CODE_STORM GenAI Intelligence Platform",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "48x48 72x72 96x96 144x144 192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#07090e",
+  "theme_color": "#07090e",
+  "display": "standalone",
+  "orientation": "portrait"
+}
