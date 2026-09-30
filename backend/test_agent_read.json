@@ -1,0 +1,10 @@
+{
+  "task_id": "sales-report",
+  "instruction": "Read monthly sales data",
+  "tool": "database.read",
+  "resource": "sales_summary",
+  "arguments": {
+    "action": "read",
+    "columns": ["month", "total_sales"]
+  }
+}

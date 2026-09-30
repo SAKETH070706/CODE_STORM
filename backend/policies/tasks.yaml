@@ -1,0 +1,20 @@
+tasks:
+
+  sales-report:
+
+    allowed_tools:
+      - database.read
+      - report.write
+      - send.report
+
+    allowed_resources:
+      - sales_summary
+      - sales_transactions
+      - reports
+      - approved_external_destination
+
+    forbidden_actions:
+      - update
+      - delete
+      - truncate
+      - drop

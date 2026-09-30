@@ -1,0 +1,7 @@
+id,month,region,product,total_sales
+1,January,South,Laptop,125000
+2,January,South,Monitor,45000
+3,February,South,Laptop,138000
+4,February,North,Monitor,51000
+5,March,South,Laptop,151000
+6,March,North,Keyboard,29000

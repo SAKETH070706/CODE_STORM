@@ -1,43 +1,89 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react'
+import { api } from '../services/api'
 
 export default function Navbar() {
-  const [isOnline, setIsOnline] = useState(false);
+
+  const [online, setOnline] =
+    useState(false)
 
   useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const res = await fetch('http://localhost:8000/health');
-        if (res.ok) setIsOnline(true);
-        else setIsOnline(false);
-      } catch (err) {
-        setIsOnline(false);
-      }
-    };
 
-    checkHealth();
-    const interval = setInterval(checkHealth, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    let mounted = true
+
+    const check = async () => {
+
+      try {
+
+        await api.health()
+
+        if (mounted)
+          setOnline(true)
+
+      } catch {
+
+        if (mounted)
+          setOnline(false)
+      }
+    }
+
+    check()
+
+    const timer =
+      setInterval(check, 5000)
+
+    return () =>
+      clearInterval(timer)
+
+  }, [])
 
   return (
+
     <header className="navbar">
-      <div className="brand">
-        <span className="brand-logo">CODE_STORM</span>
-        <span className="brand-tag">GenAI Platform</span>
+
+      <div>
+
+        <div className="brand-logo">
+          CODE_STORM
+        </div>
+
+        <div className="brand-tag">
+          Agent Permission Governor
+        </div>
+
       </div>
 
       <div className="nav-badges">
+
         <div className="model-pill">
-          Groq: <span>qwen3.8-27b</span>
+          Environment:
+          <span> LOCAL</span>
         </div>
+
         <div className="model-pill">
-          Gemini: <span>3.5-flash</span>
+          Agent:
+          <span> demo-data-analyst</span>
         </div>
+
         <div className="status-badge">
-          <span className={`status-dot ${isOnline ? 'online' : 'offline'}`}></span>
-          {isOnline ? 'Backend Connected' : 'Connecting to API (Port 8000)...'}
+
+          <span
+            className={
+              `status-dot ${
+                online
+                  ? 'online'
+                  : 'offline'
+              }`
+            }
+          />
+
+          {online
+            ? 'Governor Online'
+            : 'Backend Offline'}
+
         </div>
+
       </div>
+
     </header>
-  );
+  )
 }

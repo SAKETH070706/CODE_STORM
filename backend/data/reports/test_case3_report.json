@@ -1,0 +1,9 @@
+{
+  "report_type": "sales_report",
+  "rows": [
+    {
+      "month": "January",
+      "total_sales": "125000"
+    }
+  ]
+}

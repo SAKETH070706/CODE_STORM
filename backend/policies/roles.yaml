@@ -1,0 +1,22 @@
+roles:
+  data_analyst:
+    tools:
+
+      database.read:
+        actions:
+          - read
+        resources:
+          - sales_summary
+          - sales_transactions
+
+      report.write:
+        actions:
+          - create
+        resources:
+          - reports
+
+      send.report:
+        actions:
+          - send
+        resources:
+          - approved_external_destination

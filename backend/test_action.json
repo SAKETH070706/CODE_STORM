@@ -1,0 +1,8 @@
+{
+  "task_id": "sales-report",
+  "tool": "database.read",
+  "resource": "sales_summary",
+  "arguments": {
+    "action": "delete"
+  }
+}

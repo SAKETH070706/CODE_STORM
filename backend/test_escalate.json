@@ -1,0 +1,10 @@
+{
+  "task_id": "sales-report",
+  "tool": "send.report",
+  "resource": "approved_external_destination",
+  "arguments": {
+    "action": "send",
+    "destination": "approved_external_destination",
+    "report_path": "monthly_sales_report.json"
+  }
+}

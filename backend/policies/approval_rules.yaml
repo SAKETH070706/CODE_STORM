@@ -1,0 +1,16 @@
+rules:
+
+  database.read:
+    read: ALLOW
+
+  report.write:
+    create: ALLOW
+
+  send.report:
+    send: ESCALATE
+
+  database.delete:
+    delete: BLOCK
+
+  database.update:
+    update: BLOCK
