@@ -110,16 +110,30 @@ class EmbeddingService:
                     all_embeddings = []
                     for i in range(0, len(clean_texts), batch_size):
                         batch = clean_texts[i : i + batch_size]
-                        for txt in batch:
+                        try:
                             res = gc.models.embed_content(
                                 model="text-embedding-004",
-                                contents=txt
+                                contents=batch
                             )
-                            # res.embeddings[0].values
-                            if hasattr(res, "embeddings") and res.embeddings:
-                                all_embeddings.append(res.embeddings[0].values)
-                            elif hasattr(res, "embedding") and res.embedding:
-                                all_embeddings.append(res.embedding.values)
+                            if hasattr(res, "embeddings") and len(res.embeddings) == len(batch):
+                                for emb in res.embeddings:
+                                    all_embeddings.append(emb.values)
+                                continue
+                        except Exception:
+                            pass
+
+                        from concurrent.futures import ThreadPoolExecutor
+                        def _embed_single(txt):
+                            r = gc.models.embed_content(model="text-embedding-004", contents=txt)
+                            if hasattr(r, "embeddings") and r.embeddings:
+                                return r.embeddings[0].values
+                            elif hasattr(r, "embedding") and r.embedding:
+                                return r.embedding.values
+                            return None
+
+                        with ThreadPoolExecutor(max_workers=min(8, max(1, len(batch)))) as executor:
+                            batch_results = list(executor.map(_embed_single, batch))
+                            all_embeddings.extend([b for b in batch_results if b is not None])
                     if all_embeddings and len(all_embeddings) == len(clean_texts):
                         return all_embeddings
                 except Exception as e:

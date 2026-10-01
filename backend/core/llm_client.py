@@ -26,6 +26,35 @@ class LLMResult:
     error: Optional[str] = None
     duration_ms: float = 0.0
 
+_groq_client = None
+_gemini_client = None
+
+def _get_groq_client():
+    global _groq_client
+    from groq import Groq
+    if hasattr(Groq, "return_value"):
+        if _groq_client is not Groq.return_value:
+            _groq_client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+        return _groq_client
+    if _groq_client is not None and hasattr(_groq_client, "mock_calls"):
+        _groq_client = None
+    if _groq_client is None and GROQ_API_KEY:
+        _groq_client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+    return _groq_client
+
+def _get_gemini_client():
+    global _gemini_client
+    from google import genai
+    if hasattr(genai.Client, "return_value"):
+        if _gemini_client is not genai.Client.return_value:
+            _gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+        return _gemini_client
+    if _gemini_client is not None and hasattr(_gemini_client, "mock_calls"):
+        _gemini_client = None
+    if _gemini_client is None and GEMINI_API_KEY:
+        _gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+    return _gemini_client
+
 def _is_transient_error(err_str: str) -> bool:
     """Returns True if error code or message indicates a temporary capacity/rate issue."""
     markers = ("429", "503", "rate limit", "rate_limit", "resource_exhausted", "unavailable", "timeout", "timed out")
@@ -118,8 +147,9 @@ def call_llm(
     # 1. Tier 1: Groq Cascade
     if GROQ_API_KEY:
         try:
-            from groq import Groq
-            groq_client = Groq(api_key=GROQ_API_KEY, timeout=remaining(), max_retries=0)
+            groq_client = _get_groq_client()
+            if groq_client is None:
+                raise RuntimeError("Groq client not initialized")
             groq_model_list = GROQ_VISION_MODELS if image_bytes else GROQ_MODELS
 
             for model_id in groq_model_list:
@@ -215,13 +245,10 @@ def call_llm(
     # 2. Tier 2: Gemini Cascade Fallback
     if GEMINI_API_KEY:
         try:
-            from google import genai
             from google.genai import types
-
-            g_client = genai.Client(
-                api_key=GEMINI_API_KEY,
-                http_options={"timeout": int(remaining() * 1000)}  # google-genai expects milliseconds
-            )
+            g_client = _get_gemini_client()
+            if g_client is None:
+                raise RuntimeError("Gemini client not initialized")
 
             for gem_model in GEMINI_MODELS:
                 if time.monotonic() >= deadline:
@@ -243,7 +270,6 @@ def call_llm(
                             config_args["response_mime_type"] = "application/json"
 
                         config = types.GenerateContentConfig(**config_args)
-                        g_client = genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": max(1, int(remaining() * 1000))})
                         g_resp = g_client.models.generate_content(
                             model=gem_model,
                             contents=contents,

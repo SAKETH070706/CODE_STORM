@@ -43,19 +43,27 @@ class Chunk:
             "score": self.score
         }
 
+_chroma_collection = None
+
 def get_chroma_collection():
-    """Initializes and returns the persistent Chroma collection with local embeddings."""
+    """Initializes and returns the cached persistent Chroma collection with local embeddings."""
+    global _chroma_collection
+    if _chroma_collection is not None:
+        return _chroma_collection
+    if chromadb is None:
+        return None
     try:
         CHROMA_DIR.mkdir(parents=True, exist_ok=True)
         client = chromadb.PersistentClient(path=str(CHROMA_DIR))
         emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=EMBEDDING_MODEL_NAME
         )
-        return client.get_or_create_collection(
+        _chroma_collection = client.get_or_create_collection(
             name=CHROMA_COLLECTION_NAME,
             embedding_function=emb_fn,
             metadata={"hnsw:space": "cosine"}
         )
+        return _chroma_collection
     except Exception as e:
         logger.warning(f"Could not initialize Chroma collection: {e}")
         return None

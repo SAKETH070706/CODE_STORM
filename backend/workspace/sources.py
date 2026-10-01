@@ -191,7 +191,7 @@ def extract(content, extension):
 
 
 def isolated(content=None, extension=None, url=None):
-    if not _parser_slots.acquire(blocking=False):
+    if not _parser_slots.acquire(blocking=True, timeout=5.0):
         raise ValueError("Source processing is busy; retry later")
     try:
         return _isolated(content, extension, url)

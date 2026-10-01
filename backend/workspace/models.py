@@ -166,7 +166,17 @@ class Database:
         connect_args = {"connect_timeout": 10}
         if "-pooler" not in url:
             connect_args["options"] = "-c lock_timeout=3000 -c statement_timeout=10000"
-        self.engine = create_engine(url, pool_pre_ping=True, **({"pool_timeout": 10, "connect_args": connect_args} if url.startswith("postgresql") else {}))
+        self.engine = create_engine(
+            url,
+            pool_pre_ping=True,
+            **({
+                "pool_size": 10,
+                "max_overflow": 20,
+                "pool_timeout": 10,
+                "pool_recycle": 1800,
+                "connect_args": connect_args
+            } if url.startswith("postgresql") else {})
+        )
         self.sessions = sessionmaker(self.engine, expire_on_commit=False)
 
     @contextmanager

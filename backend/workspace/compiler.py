@@ -17,7 +17,7 @@ class Compiler:
 
     def start(self, identity, source_id, policy_id, mode, configuration):
         require(identity, "drafts")
-        if not _slots.acquire(False):
+        if not _slots.acquire(blocking=True, timeout=3.0):
             raise HTTPException(429, "Compilation workers are busy; manual editing remains available")
         try:
             with self.db.transaction(identity.organization_id) as s:
