@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Form, Field, Choice, Badge, Details } from './shared';
 import { options, pretty } from './sharedValues';
-import { diffRules, parseRules } from '../workspaceClient';
+import { diffRules, parseRules, safeStorage, DRAFT_PREFIX } from '../workspaceClient';
 
 export default function Policies({
   sources,
@@ -13,15 +13,23 @@ export default function Policies({
   work,
   can,
   busy,
-  _permissions,
+  session,
 }) {
-  const [selectedId, setSelectedId] = useState('');
+  // Unsaved edits are mirrored to sessionStorage, keyed by user and policy, so an expired session
+  // does not lose them. They are discarded on save, reload of the version, or explicit sign-out.
+  const who = session?.principal_id || '';
+  const selKey = `${DRAFT_PREFIX}sel_${who}`;
+  const editKey = id => `${DRAFT_PREFIX}editor_${who}_${id}`;
+  const [selectedId, setSelectedId] = useState(() => (who ? safeStorage.get(selKey) : ''));
   const [customEditor, setCustomEditor] = useState(null);
 
   const selected = (selectedId && policies.find(p => p.id === selectedId)) || policies[0] || null;
+  const stored = who && selected ? safeStorage.get(editKey(selected.id)) : '';
   const editor =
     customEditor !== null
       ? customEditor
+      : stored
+      ? stored
       : selected?.data?.rules
       ? pretty(selected.data.rules)
       : '[]';
@@ -35,6 +43,7 @@ export default function Policies({
     if (!p?.data) throw new Error('Policy could not be loaded. Refresh the policy list.');
     setSelectedId(p.id);
     setCustomEditor(null);
+    if (who) { safeStorage.set(selKey, p.id); safeStorage.set(editKey(p.id), ''); }
   }
 
   async function saveDraft() {
@@ -59,6 +68,7 @@ export default function Policies({
           rules,
         });
         setSelectedId(saved.id);
+        if (who) safeStorage.set(editKey(saved.id), '');
       }
       const val = await api(`/policies/${selected.id}/validate`, {});
       edit(val);
@@ -67,15 +77,16 @@ export default function Policies({
 
   async function publishPolicy() {
     await work(async () => {
-      if (selected.state === 'DRAFT') {
-        if (dirty) {
-          await api('/policies', {
-            id: selected.id,
-            name: selected.name,
-            expected_revision: selected.data.revision,
-            rules,
-          });
-        }
+      if (dirty || selected.state === 'DRAFT') {
+        if (editorError) throw new Error('Cannot publish: ' + editorError);
+        const saved = await api('/policies', {
+          id: selected.id,
+          name: selected.name,
+          expected_revision: selected.data.revision,
+          rules,
+        });
+        setSelectedId(saved.id);
+        if (who) safeStorage.set(editKey(saved.id), '');
         await api(`/policies/${selected.id}/validate`, {});
       }
       const p = await api(`/policies/${selected.id}/publish`, {
@@ -257,7 +268,7 @@ export default function Policies({
                   rows={25}
                   value={editor}
                   readOnly={!can('drafts') || !['DRAFT', 'VALIDATED'].includes(selected.state)}
-                  onChange={e => setCustomEditor(e.target.value)}
+                  onChange={e => { setCustomEditor(e.target.value); if (who) safeStorage.set(editKey(selected.id), e.target.value); }}
                 />
               </label>
               <p className="muted">
@@ -297,7 +308,11 @@ export default function Policies({
                 <button
                   className="secondary"
                   disabled={busy}
-                  onClick={() => operation('clone')}
+                  onClick={() =>
+                    work(async () => {
+                      edit(await api(`/policies/${selected.id}/clone`, {}));
+                    }, 'Cloned as new draft')
+                  }
                 >
                   {busy ? 'Cloning...' : 'Clone as new draft'}
                 </button>

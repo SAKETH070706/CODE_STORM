@@ -1,0 +1,791 @@
+{
+  "admin": [
+    {
+      "id": "6bc1ecc0b19f4dceb42aab3abd34ca72",
+      "email": "admin@example.test",
+      "active": true,
+      "can_create_workspaces": true,
+      "has_password_hash": true
+    }
+  ],
+  "organizations": [
+    {
+      "id": "430f2096245945f19785b4c1392f0d65",
+      "name": "CODE_STORM Workspace",
+      "active_policy_id": "edc5428aa40b4aacb3cc36057bf149f6",
+      "audit_sequence": 21,
+      "audit_head": "87c7c0f9c27ae9f9a45cab3d3ad8902ec9028f34720aaf013ea7fa0165ff715e"
+    }
+  ],
+  "admin_memberships": [
+    {
+      "id": "cf88bb5177b747518dd112209e3141a0",
+      "user_id": "6bc1ecc0b19f4dceb42aab3abd34ca72",
+      "organization_id": "430f2096245945f19785b4c1392f0d65",
+      "permissions": [
+        "activity",
+        "agents",
+        "audit",
+        "connectors",
+        "drafts",
+        "members",
+        "playground",
+        "publish",
+        "review",
+        "sources"
+      ],
+      "groups": [],
+      "active": true
+    }
+  ],
+  "counts": {
+    "users": 2,
+    "memberships": 2,
+    "agents": 1,
+    "tasks": 1,
+    "connectors": 3,
+    "reviewer_groups": 1,
+    "policies": 1,
+    "policy_sources": 1,
+    "workspace_actions": 3,
+    "workspace_artifacts": 2,
+    "workspace_approvals": 0,
+    "workspace_outbox": 0,
+    "compilation_jobs": 1,
+    "agent_credentials": 1,
+    "workspace_idempotency": 0,
+    "workspace_audit": 22
+  },
+  "records": {
+    "agents": [
+      {
+        "id": "3bffb01cff51403a97ba006d2558b7a6",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "Financial Analyst Agent",
+        "state": "ACTIVE",
+        "data": {
+          "role": "data_analyst"
+        },
+        "created_at": "2026-10-01T00:43:41.896225+00:00"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "61468ae478054093b35b466d757b932a",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "sales-report",
+        "state": "ACTIVE",
+        "data": {
+          "roles": [
+            "data_analyst"
+          ],
+          "resources": [
+            "40eab3cb12fb4d839dbe548cfcf9c046",
+            "c41e68aad1ed4f77a2b4102df16c93fc",
+            "79fbda96ee25410181bdea4878fdad49"
+          ],
+          "agents": [
+            "3bffb01cff51403a97ba006d2558b7a6"
+          ]
+        },
+        "created_at": "2026-10-01T00:45:18.559032+00:00"
+      }
+    ],
+    "connectors": [
+      {
+        "id": "79fbda96ee25410181bdea4878fdad49",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "Sales DB",
+        "state": "ACTIVE",
+        "data": {
+          "kind": "demo_sales",
+          "destinations": []
+        },
+        "created_at": "2026-10-01T00:39:11.038635+00:00"
+      },
+      {
+        "id": "c41e68aad1ed4f77a2b4102df16c93fc",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "Report Storage",
+        "state": "ACTIVE",
+        "data": {
+          "kind": "report_storage",
+          "destinations": []
+        },
+        "created_at": "2026-10-01T00:39:45.446019+00:00"
+      },
+      {
+        "id": "40eab3cb12fb4d839dbe548cfcf9c046",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "Outbox",
+        "state": "ACTIVE",
+        "data": {
+          "kind": "simulated_delivery",
+          "destinations": [
+            "review@example.test"
+          ]
+        },
+        "created_at": "2026-10-01T00:40:20.976501+00:00"
+      }
+    ],
+    "reviewer_groups": [
+      {
+        "id": "f97e0890204242d692001394d8dd414c",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "Security Reviewers",
+        "state": "ACTIVE",
+        "data": {},
+        "created_at": "2026-10-01T00:44:57.154445+00:00"
+      }
+    ],
+    "policies": [
+      {
+        "id": "edc5428aa40b4aacb3cc36057bf149f6",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "Review sales_policy.md",
+        "state": "PUBLISHED",
+        "data": {
+          "rules": [
+            {
+              "id": "report-send",
+              "role": "data_analyst",
+              "tool": "report.send",
+              "resource": "40eab3cb12fb4d839dbe548cfcf9c046",
+              "tasks": [
+                "61468ae478054093b35b466d757b932a"
+              ],
+              "arguments": {
+                "max_rows": 100,
+                "formats": [
+                  "csv",
+                  "json"
+                ],
+                "destinations": [
+                  "review@example.test"
+                ]
+              },
+              "decision": "ESCALATE",
+              "reviewer_group": "f97e0890204242d692001394d8dd414c",
+              "source": {
+                "source_id": "0c31f2e70b7b49639bba5485a5350639",
+                "revision": 1,
+                "segment": 1,
+                "passage": "# Example Company Policy \u2014 synthetic demo\r\n\r\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\r\nsales data they are authorized to read. External report sharing requires manager\r\napproval. The demo destination is review@example.test. This example permits only\r\nsynthetic data and simulated delivery.\r\n\r\nCustomer support agents may read the synthetic support summary only when assigned\r\na support-review task. This document is evidence for draft rules, not runtime authority.\r\n"
+              },
+              "assumptions": [],
+              "ambiguity": []
+            },
+            {
+              "id": "report-create",
+              "role": "data_analyst",
+              "tool": "report.create",
+              "resource": "c41e68aad1ed4f77a2b4102df16c93fc",
+              "tasks": [
+                "61468ae478054093b35b466d757b932a"
+              ],
+              "arguments": {
+                "max_rows": 100,
+                "formats": [
+                  "csv",
+                  "json"
+                ],
+                "destinations": []
+              },
+              "decision": "ALLOW",
+              "reviewer_group": null,
+              "source": {
+                "source_id": "0c31f2e70b7b49639bba5485a5350639",
+                "revision": 1,
+                "segment": 1,
+                "passage": "# Example Company Policy \u2014 synthetic demo\r\n\r\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\r\nsales data they are authorized to read. External report sharing requires manager\r\napproval. The demo destination is review@example.test. This example permits only\r\nsynthetic data and simulated delivery.\r\n\r\nCustomer support agents may read the synthetic support summary only when assigned\r\na support-review task. This document is evidence for draft rules, not runtime authority.\r\n"
+              },
+              "assumptions": [],
+              "ambiguity": []
+            },
+            {
+              "id": "database-read",
+              "role": "data_analyst",
+              "tool": "database.read",
+              "resource": "79fbda96ee25410181bdea4878fdad49",
+              "tasks": [
+                "61468ae478054093b35b466d757b932a"
+              ],
+              "arguments": {
+                "max_rows": 100,
+                "formats": [
+                  "csv",
+                  "json"
+                ],
+                "destinations": []
+              },
+              "decision": "ALLOW",
+              "reviewer_group": null,
+              "source": {
+                "source_id": "0c31f2e70b7b49639bba5485a5350639",
+                "revision": 1,
+                "segment": 1,
+                "passage": "# Example Company Policy \u2014 synthetic demo\r\n\r\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\r\nsales data they are authorized to read. External report sharing requires manager\r\napproval. The demo destination is review@example.test. This example permits only\r\nsynthetic data and simulated delivery.\r\n\r\nCustomer support agents may read the synthetic support summary only when assigned\r\na support-review task. This document is evidence for draft rules, not runtime authority.\r\n"
+              },
+              "assumptions": [],
+              "ambiguity": []
+            }
+          ],
+          "revision": 3,
+          "validation_errors": [],
+          "digest": "17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d",
+          "published_at": "2026-10-01T00:49:05.892173+00:00",
+          "publisher": "6bc1ecc0b19f4dceb42aab3abd34ca72"
+        },
+        "created_at": "2026-10-01T00:46:30.548293+00:00"
+      }
+    ],
+    "policy_sources": [
+      {
+        "id": "0c31f2e70b7b49639bba5485a5350639",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "sales_policy.md",
+        "state": "EXTRACTED",
+        "data": {
+          "storage_key": "30754cd5e1f3450eb2e0ea663ef73549",
+          "content_hash": "c36a26b7d008efc718cdfadf0676d4ac90409206f2746ef1e47d56e5d950ec9e",
+          "revision": 1,
+          "lineage": "7b41d61a82b54ccfa03535a7027981d2",
+          "uploader": "6bc1ecc0b19f4dceb42aab3abd34ca72",
+          "segments": [
+            {
+              "index": 1,
+              "reference": "Section 1",
+              "text": "# Example Company Policy \u2014 synthetic demo\r\n\r\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\r\nsales data they are authorized to read. External report sharing requires manager\r\napproval. The demo destination is review@example.test. This example permits only\r\nsynthetic data and simulated delivery.\r\n\r\nCustomer support agents may read the synthetic support summary only when assigned\r\na support-review task. This document is evidence for draft rules, not runtime authority.\r\n"
+            }
+          ],
+          "extension": ".md",
+          "origin": "upload"
+        },
+        "created_at": "2026-10-01T00:46:30.239025+00:00"
+      }
+    ],
+    "workspace_actions": [
+      {
+        "id": "9566cd9ec89f44fda411da190429a4a0",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "3bffb01cff51403a97ba006d2558b7a6",
+        "state": "SUCCEEDED",
+        "data": {
+          "action": {
+            "task_id": "61468ae478054093b35b466d757b932a",
+            "tool": "database.read",
+            "resource": "79fbda96ee25410181bdea4878fdad49",
+            "arguments": {
+              "limit": 3
+            }
+          },
+          "action_digest": "a00f0e63cc24fd010e68304099b90829cdd3978e69ce28ddd98b72f5d066002a",
+          "context_digest": "9488be0cac92e92e354272a14064933d2dc958ec60a6677d04e5d92d915833ea",
+          "response": {
+            "decision": "ALLOW",
+            "reason_code": "AUTHORIZED",
+            "reason": "Published rules and current context evaluated",
+            "role": "data_analyst",
+            "executed": true,
+            "result": {
+              "rows": [
+                {
+                  "month": "January",
+                  "total_sales": 120000
+                },
+                {
+                  "month": "February",
+                  "total_sales": 135000
+                },
+                {
+                  "month": "March",
+                  "total_sales": 142000
+                }
+              ],
+              "row_count": 3,
+              "artifact_id": "d593154cbb234c248f64dfc6c8d6af4e"
+            },
+            "risk": {
+              "score": 5.3,
+              "category": "Low",
+              "factors": {
+                "impact": 0,
+                "sensitivity": 0.25,
+                "blast_radius": 0.03,
+                "external_egress": 0,
+                "provenance_uncertainty": 0,
+                "recent_denials": 0.0
+              },
+              "explanation": "Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities."
+            },
+            "matched_rule_ids": [
+              "database-read"
+            ],
+            "source_references": [
+              {
+                "source_id": "0c31f2e70b7b49639bba5485a5350639",
+                "revision": 1,
+                "segment": 1,
+                "passage": "# Example Company Policy \u2014 synthetic demo\r\n\r\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\r\nsales data they are authorized to read. External report sharing requires manager\r\napproval. The demo destination is review@example.test. This example permits only\r\nsynthetic data and simulated delivery.\r\n\r\nCustomer support agents may read the synthetic support summary only when assigned\r\na support-review task. This document is evidence for draft rules, not runtime authority.\r\n"
+              }
+            ],
+            "reviewer_groups": [],
+            "policy_version": "edc5428aa40b4aacb3cc36057bf149f6",
+            "policy_digest": "17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d",
+            "stage_timings": {
+              "tier0_1_ms": 3113.518,
+              "tier2_ms": 1.579,
+              "execution_ms": 15.251
+            },
+            "tiers": {
+              "tier0": "PASS",
+              "tier1": "Low",
+              "tier2": "SKIPPED",
+              "tier3": "SUCCEEDED"
+            },
+            "request_id": "9566cd9ec89f44fda411da190429a4a0",
+            "state": "SUCCEEDED",
+            "processing_ms": 5895.837
+          },
+          "expires_at": 1790816739.7900026,
+          "evaluation_only": false,
+          "credential_id": null,
+          "initiated_by": "6bc1ecc0b19f4dceb42aab3abd34ca72",
+          "role": "data_analyst"
+        },
+        "created_at": "2026-10-01T00:50:39.793525+00:00"
+      },
+      {
+        "id": "712806e802df4818b03cf5e79135c65a",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "3bffb01cff51403a97ba006d2558b7a6",
+        "state": "SUCCEEDED",
+        "data": {
+          "action": {
+            "task_id": "61468ae478054093b35b466d757b932a",
+            "tool": "report.create",
+            "resource": "c41e68aad1ed4f77a2b4102df16c93fc",
+            "arguments": {
+              "source_artifact_id": "d593154cbb234c248f64dfc6c8d6af4e",
+              "report_id": "monthly-sales",
+              "format": "csv"
+            }
+          },
+          "action_digest": "3b4b8c21531203474f099f0dfa83da04cd14e7cdbc36b93e18ccf0ccbb67f94e",
+          "context_digest": "bf27e3550a128bfeb7726a953b3eaadd3f52f3da81aee4e8ab91c3082135848c",
+          "response": {
+            "decision": "ALLOW",
+            "reason_code": "AUTHORIZED",
+            "reason": "Published rules and current context evaluated",
+            "role": "data_analyst",
+            "executed": true,
+            "result": {
+              "artifact_id": "db82cd93e91f40ec8ce18eab2bc95513",
+              "format": "csv",
+              "content_digest": "7a33bc136e45d1b183d6d0a9b5c9368a7b37be2a72d7fbc45a4cef69ae0ee61e"
+            },
+            "risk": {
+              "score": 10.3,
+              "category": "Low",
+              "factors": {
+                "impact": 0.25,
+                "sensitivity": 0.25,
+                "blast_radius": 0.03,
+                "external_egress": 0,
+                "provenance_uncertainty": 0,
+                "recent_denials": 0.0
+              },
+              "explanation": "Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities."
+            },
+            "matched_rule_ids": [
+              "report-create"
+            ],
+            "source_references": [
+              {
+                "source_id": "0c31f2e70b7b49639bba5485a5350639",
+                "revision": 1,
+                "segment": 1,
+                "passage": "# Example Company Policy \u2014 synthetic demo\r\n\r\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\r\nsales data they are authorized to read. External report sharing requires manager\r\napproval. The demo destination is review@example.test. This example permits only\r\nsynthetic data and simulated delivery.\r\n\r\nCustomer support agents may read the synthetic support summary only when assigned\r\na support-review task. This document is evidence for draft rules, not runtime authority.\r\n"
+              }
+            ],
+            "reviewer_groups": [],
+            "policy_version": "edc5428aa40b4aacb3cc36057bf149f6",
+            "policy_digest": "17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d",
+            "stage_timings": {
+              "tier0_1_ms": 3275.615,
+              "tier2_ms": 0.843,
+              "execution_ms": 10.946
+            },
+            "tiers": {
+              "tier0": "PASS",
+              "tier1": "Low",
+              "tier2": "SKIPPED",
+              "tier3": "SUCCEEDED"
+            },
+            "request_id": "712806e802df4818b03cf5e79135c65a",
+            "state": "SUCCEEDED",
+            "processing_ms": 6657.561
+          },
+          "expires_at": 1790816774.1996055,
+          "evaluation_only": false,
+          "credential_id": null,
+          "initiated_by": "6bc1ecc0b19f4dceb42aab3abd34ca72",
+          "role": "data_analyst"
+        },
+        "created_at": "2026-10-01T00:51:14.200367+00:00"
+      },
+      {
+        "id": "c1aca6ee3cef42d29c0b6b0be1578e72",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "3bffb01cff51403a97ba006d2558b7a6",
+        "state": "REVIEW_REQUIRED",
+        "data": {
+          "action": {
+            "task_id": "61468ae478054093b35b466d757b932a",
+            "tool": "report.send",
+            "resource": "40eab3cb12fb4d839dbe548cfcf9c046",
+            "arguments": {
+              "artifact_id": "db82cd93e91f40ec8ce18eab2bc95513",
+              "report_id": "monthly-sales",
+              "recipient": "review@example.test"
+            }
+          },
+          "action_digest": "9ac6ae16cd7131cfd1613ee1fec7b5ce7e8f38aef66b2e979bfdb5fec272cff9",
+          "context_digest": "3d557252c91140e7214e4f017b458ddbfa7eb0c94ae54c8dd323e941cb8cc317",
+          "response": {
+            "decision": "ESCALATE",
+            "reason_code": "HUMAN_REVIEW_REQUIRED",
+            "reason": "Published rules and current context evaluated",
+            "role": "data_analyst",
+            "executed": false,
+            "result": null,
+            "risk": {
+              "score": 45.3,
+              "category": "Medium",
+              "factors": {
+                "impact": 0.75,
+                "sensitivity": 0.25,
+                "blast_radius": 0.03,
+                "external_egress": 1,
+                "provenance_uncertainty": 0,
+                "recent_denials": 0.0
+              },
+              "explanation": "Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities."
+            },
+            "matched_rule_ids": [
+              "report-send"
+            ],
+            "source_references": [
+              {
+                "source_id": "0c31f2e70b7b49639bba5485a5350639",
+                "revision": 1,
+                "segment": 1,
+                "passage": "# Example Company Policy \u2014 synthetic demo\r\n\r\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\r\nsales data they are authorized to read. External report sharing requires manager\r\napproval. The demo destination is review@example.test. This example permits only\r\nsynthetic data and simulated delivery.\r\n\r\nCustomer support agents may read the synthetic support summary only when assigned\r\na support-review task. This document is evidence for draft rules, not runtime authority.\r\n"
+              }
+            ],
+            "reviewer_groups": [
+              "f97e0890204242d692001394d8dd414c"
+            ],
+            "policy_version": "edc5428aa40b4aacb3cc36057bf149f6",
+            "policy_digest": "17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d",
+            "stage_timings": {
+              "tier0_1_ms": 3778.847,
+              "tier2_ms": 2.584
+            },
+            "tiers": {
+              "tier0": "PASS",
+              "tier1": "Medium",
+              "tier2": "SKIPPED",
+              "tier3": "REVIEW_REQUIRED"
+            },
+            "request_id": "c1aca6ee3cef42d29c0b6b0be1578e72",
+            "state": "REVIEW_REQUIRED",
+            "processing_ms": 6453.982
+          },
+          "expires_at": 1790816815.1701884,
+          "evaluation_only": false,
+          "credential_id": null,
+          "initiated_by": "6bc1ecc0b19f4dceb42aab3abd34ca72",
+          "role": "data_analyst"
+        },
+        "created_at": "2026-10-01T00:51:55.170669+00:00"
+      }
+    ],
+    "workspace_artifacts": [
+      {
+        "id": "d593154cbb234c248f64dfc6c8d6af4e",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "",
+        "state": "ACTIVE",
+        "data": {
+          "principal_id": "3bffb01cff51403a97ba006d2558b7a6",
+          "task_id": "61468ae478054093b35b466d757b932a",
+          "resource": "79fbda96ee25410181bdea4878fdad49",
+          "sensitivity": "internal",
+          "kind": "data",
+          "rows": [
+            {
+              "month": "January",
+              "total_sales": 120000
+            },
+            {
+              "month": "February",
+              "total_sales": 135000
+            },
+            {
+              "month": "March",
+              "total_sales": 142000
+            }
+          ],
+          "content_digest": "c7b55c7d4240548d4836c0b2c9edb79fffd95f72a434ff1259c86ea1eb82e561"
+        },
+        "created_at": "2026-10-01T00:50:47.779443+00:00"
+      },
+      {
+        "id": "db82cd93e91f40ec8ce18eab2bc95513",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "",
+        "state": "ACTIVE",
+        "data": {
+          "principal_id": "3bffb01cff51403a97ba006d2558b7a6",
+          "task_id": "61468ae478054093b35b466d757b932a",
+          "resource": "c41e68aad1ed4f77a2b4102df16c93fc",
+          "sensitivity": "internal",
+          "kind": "report",
+          "rows": [
+            {
+              "month": "January",
+              "total_sales": 120000
+            },
+            {
+              "month": "February",
+              "total_sales": 135000
+            },
+            {
+              "month": "March",
+              "total_sales": 142000
+            }
+          ],
+          "filename": "db82cd93e91f40ec8ce18eab2bc95513.csv",
+          "source_id": "d593154cbb234c248f64dfc6c8d6af4e",
+          "content_digest": "7a33bc136e45d1b183d6d0a9b5c9368a7b37be2a72d7fbc45a4cef69ae0ee61e"
+        },
+        "created_at": "2026-10-01T00:51:22.696548+00:00"
+      }
+    ],
+    "workspace_approvals": [],
+    "workspace_outbox": [],
+    "compilation_jobs": [
+      {
+        "id": "4b786cf03c4849009b72fd35c581fc9f",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "name": "",
+        "state": "SUCCEEDED",
+        "data": {
+          "source_id": "0c31f2e70b7b49639bba5485a5350639",
+          "policy_id": "edc5428aa40b4aacb3cc36057bf149f6",
+          "mode": "manual",
+          "revision": 1
+        },
+        "created_at": "2026-10-01T00:46:54.613119+00:00"
+      }
+    ],
+    "audit": [
+      {
+        "id": "4df94311d03e4445bd99038879f1eb00",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 1,
+        "event_json": "{\"event_type\":\"connectors.changed\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"record_id\":\"79fbda96ee25410181bdea4878fdad49\",\"sequence\":1,\"timestamp\":\"2026-10-01T00:39:11.650830+00:00\"}",
+        "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "event_hash": "8e41be6f373dfcb3d15d3beddddbacf04f2b72959c59274a8b377a390ac8369b"
+      },
+      {
+        "id": "a54b9412f96549b4ae31e6b974b360b4",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 2,
+        "event_json": "{\"event_type\":\"connectors.changed\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"record_id\":\"c41e68aad1ed4f77a2b4102df16c93fc\",\"sequence\":2,\"timestamp\":\"2026-10-01T00:39:46.056680+00:00\"}",
+        "previous_hash": "8e41be6f373dfcb3d15d3beddddbacf04f2b72959c59274a8b377a390ac8369b",
+        "event_hash": "67bd867d488a53b1d1b9c5b1deecfc3b042639e01f81d6af19dfd996c4e67485"
+      },
+      {
+        "id": "de752342736e46889ab2cf577b40816d",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 3,
+        "event_json": "{\"event_type\":\"connectors.changed\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"record_id\":\"40eab3cb12fb4d839dbe548cfcf9c046\",\"sequence\":3,\"timestamp\":\"2026-10-01T00:40:21.693388+00:00\"}",
+        "previous_hash": "67bd867d488a53b1d1b9c5b1deecfc3b042639e01f81d6af19dfd996c4e67485",
+        "event_hash": "5651eb4bd2565dda1de9f5c47743a0b4b0c529b23a3885b420b60e179757ac24"
+      },
+      {
+        "id": "a8fc6600bd544bb4a6a3fec40fd8fda2",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 4,
+        "event_json": "{\"event_type\":\"agents.changed\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"record_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"sequence\":4,\"timestamp\":\"2026-10-01T00:43:42.727184+00:00\"}",
+        "previous_hash": "5651eb4bd2565dda1de9f5c47743a0b4b0c529b23a3885b420b60e179757ac24",
+        "event_hash": "6368c658e8ee636baa10822c6abf227fd1152a50a3c25d9b0332f6b4b0e8c419"
+      },
+      {
+        "id": "3a9923a7406b497d8bb1be06cbdb484c",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 5,
+        "event_json": "{\"agent_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"credential_id\":\"adb64c93066843ae994c3d4e31bae8b2\",\"event_type\":\"credential.created\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"sequence\":5,\"timestamp\":\"2026-10-01T00:44:01.983395+00:00\"}",
+        "previous_hash": "6368c658e8ee636baa10822c6abf227fd1152a50a3c25d9b0332f6b4b0e8c419",
+        "event_hash": "7fa141adbc1c57413a17bdb17408db26ad8fbb2217bf9a41f1e555daba1dc7ab"
+      },
+      {
+        "id": "daeb1160fceb4c099993d9540dadc5d2",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 6,
+        "event_json": "{\"event_type\":\"reviewer_groups.changed\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"record_id\":\"f97e0890204242d692001394d8dd414c\",\"sequence\":6,\"timestamp\":\"2026-10-01T00:44:58.260964+00:00\"}",
+        "previous_hash": "7fa141adbc1c57413a17bdb17408db26ad8fbb2217bf9a41f1e555daba1dc7ab",
+        "event_hash": "1c173dff3cebb2d693d09d5db123dda4bcec911b6ab9172dbc8127bc477f4025"
+      },
+      {
+        "id": "eb8cfd00d8814f07a7f98ec624c8421d",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 7,
+        "event_json": "{\"event_type\":\"tasks.changed\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"record_id\":\"61468ae478054093b35b466d757b932a\",\"sequence\":7,\"timestamp\":\"2026-10-01T00:45:19.080800+00:00\"}",
+        "previous_hash": "1c173dff3cebb2d693d09d5db123dda4bcec911b6ab9172dbc8127bc477f4025",
+        "event_hash": "db5d2038923bfa0f002ad4a8f9d1c9f04b16e0eeaeb7f54bcb6cfad3777ebf93"
+      },
+      {
+        "id": "7267c9c55f7c4eec902810b91e918927",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 8,
+        "event_json": "{\"event_type\":\"membership.changed\",\"groups\":[\"f97e0890204242d692001394d8dd414c\"],\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"permissions\":[\"review\",\"activity\",\"audit\"],\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"sequence\":8,\"timestamp\":\"2026-10-01T00:45:37.876533+00:00\",\"user_id\":\"aa0295460f674bf0b52a8bbe13e3f6bc\"}",
+        "previous_hash": "db5d2038923bfa0f002ad4a8f9d1c9f04b16e0eeaeb7f54bcb6cfad3777ebf93",
+        "event_hash": "0adbffd920ae43ba96c8caf5cd91bf299003e51f956daa00b04be970177d5853"
+      },
+      {
+        "id": "cab1d6a8c0fa466ebcba87acd247ac52",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 9,
+        "event_json": "{\"content_hash\":\"c36a26b7d008efc718cdfadf0676d4ac90409206f2746ef1e47d56e5d950ec9e\",\"draft_id\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"event_type\":\"source.uploaded\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"revision\":1,\"sequence\":9,\"source_id\":\"0c31f2e70b7b49639bba5485a5350639\",\"timestamp\":\"2026-10-01T00:46:31.166246+00:00\"}",
+        "previous_hash": "0adbffd920ae43ba96c8caf5cd91bf299003e51f956daa00b04be970177d5853",
+        "event_hash": "a52d38ed7a6079025b9fdf1b09c116543cc5f3abc4b1913eed62f85ba7b6305a"
+      },
+      {
+        "id": "d7208a66a52a47aab10a0e5b6fedb188",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 10,
+        "event_json": "{\"event_type\":\"compilation.queued\",\"job_id\":\"4b786cf03c4849009b72fd35c581fc9f\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_id\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"sequence\":10,\"timestamp\":\"2026-10-01T00:46:55.223407+00:00\"}",
+        "previous_hash": "a52d38ed7a6079025b9fdf1b09c116543cc5f3abc4b1913eed62f85ba7b6305a",
+        "event_hash": "def39a730a68f3fcf62e7b700e21d57b1c79df2698e72283a20499a0662a5ac8"
+      },
+      {
+        "id": "cc5642f9b189476f9d24b09ba01cdfe9",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 11,
+        "event_json": "{\"event_type\":\"compilation.completed\",\"job_id\":\"4b786cf03c4849009b72fd35c581fc9f\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_id\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"sequence\":11,\"timestamp\":\"2026-10-01T00:47:01.268745+00:00\"}",
+        "previous_hash": "def39a730a68f3fcf62e7b700e21d57b1c79df2698e72283a20499a0662a5ac8",
+        "event_hash": "7528b279cd49cc90f4c26d8b23ea6a4546d44c86d34f68fc49527a8934e7e019"
+      },
+      {
+        "id": "957d5d15d6684afb81fbe347633c270a",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 12,
+        "event_json": "{\"event_type\":\"policy.edited\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_id\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"revision\":3,\"sequence\":12,\"timestamp\":\"2026-10-01T00:48:28.406429+00:00\"}",
+        "previous_hash": "7528b279cd49cc90f4c26d8b23ea6a4546d44c86d34f68fc49527a8934e7e019",
+        "event_hash": "e52048345e6ba20ee97bb4f165cc5eca6e486052ec6aec6d81cafbc55831b83b"
+      },
+      {
+        "id": "201d4edff57144b4adac2b179edef7d5",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 13,
+        "event_json": "{\"event_type\":\"policy.validated\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_id\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"sequence\":13,\"timestamp\":\"2026-10-01T00:48:48.272744+00:00\",\"valid\":true}",
+        "previous_hash": "e52048345e6ba20ee97bb4f165cc5eca6e486052ec6aec6d81cafbc55831b83b",
+        "event_hash": "b68f809f5f053270d2e6903279a8e66ef3d407028729db21049918da84fa5fb9"
+      },
+      {
+        "id": "31824d2e8f2145c7b956b72bbcb52f35",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 14,
+        "event_json": "{\"event_type\":\"policy.published\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_digest\":\"17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d\",\"policy_id\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"sequence\":14,\"timestamp\":\"2026-10-01T00:49:07.224537+00:00\"}",
+        "previous_hash": "b68f809f5f053270d2e6903279a8e66ef3d407028729db21049918da84fa5fb9",
+        "event_hash": "84fce48456fb898e59f94977e5dcaeee4d58bd8384a207f1be6b44949cb2719c"
+      },
+      {
+        "id": "d287b2549b3f4c9b801ae312ce36b56b",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 15,
+        "event_json": "{\"action_digest\":\"a00f0e63cc24fd010e68304099b90829cdd3978e69ce28ddd98b72f5d066002a\",\"agent_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"decision\":\"ALLOW\",\"event_type\":\"action.transition\",\"matched_rule_ids\":[\"database-read\"],\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_digest\":\"17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d\",\"policy_version\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"previous_state\":null,\"principal_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"reason_code\":\"AUTHORIZED\",\"request_id\":\"9566cd9ec89f44fda411da190429a4a0\",\"reviewer_id\":null,\"risk\":{\"category\":\"Low\",\"explanation\":\"Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities.\",\"factors\":{\"blast_radius\":0.03,\"external_egress\":0,\"impact\":0,\"provenance_uncertainty\":0,\"recent_denials\":0.0,\"sensitivity\":0.25},\"score\":5.3},\"sequence\":15,\"source_references\":[{\"passage\":\"# Example Company Policy \u2014 synthetic demo\\r\\n\\r\\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\\r\\nsales data they are authorized to read. External report sharing requires manager\\r\\napproval. The demo destination is review@example.test. This example permits only\\r\\nsynthetic data and simulated delivery.\\r\\n\\r\\nCustomer support agents may read the synthetic support summary only when assigned\\r\\na support-review task. This document is evidence for draft rules, not runtime authority.\\r\\n\",\"revision\":1,\"segment\":1,\"source_id\":\"0c31f2e70b7b49639bba5485a5350639\"}],\"stage_timings\":{\"tier0_1_ms\":3113.518,\"tier2_ms\":1.579},\"state\":\"AUTHORIZED\",\"timestamp\":\"2026-10-01T00:50:40.405836+00:00\"}",
+        "previous_hash": "84fce48456fb898e59f94977e5dcaeee4d58bd8384a207f1be6b44949cb2719c",
+        "event_hash": "a54a1fbe1aaadfad7940b1a51ffa07f3aceb9d332f8e08eed7f9234c5c597fef"
+      },
+      {
+        "id": "6f7f5c3c27624af58c7c5b292ad33ddd",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 16,
+        "event_json": "{\"action_digest\":\"a00f0e63cc24fd010e68304099b90829cdd3978e69ce28ddd98b72f5d066002a\",\"agent_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"decision\":\"ALLOW\",\"event_type\":\"action.transition\",\"matched_rule_ids\":[\"database-read\"],\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_digest\":\"17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d\",\"policy_version\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"previous_state\":\"AUTHORIZED\",\"principal_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"reason_code\":\"AUTHORIZED\",\"request_id\":\"9566cd9ec89f44fda411da190429a4a0\",\"reviewer_id\":null,\"risk\":{\"category\":\"Low\",\"explanation\":\"Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities.\",\"factors\":{\"blast_radius\":0.03,\"external_egress\":0,\"impact\":0,\"provenance_uncertainty\":0,\"recent_denials\":0.0,\"sensitivity\":0.25},\"score\":5.3},\"sequence\":16,\"source_references\":[{\"passage\":\"# Example Company Policy \u2014 synthetic demo\\r\\n\\r\\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\\r\\nsales data they are authorized to read. External report sharing requires manager\\r\\napproval. The demo destination is review@example.test. This example permits only\\r\\nsynthetic data and simulated delivery.\\r\\n\\r\\nCustomer support agents may read the synthetic support summary only when assigned\\r\\na support-review task. This document is evidence for draft rules, not runtime authority.\\r\\n\",\"revision\":1,\"segment\":1,\"source_id\":\"0c31f2e70b7b49639bba5485a5350639\"}],\"stage_timings\":{\"tier0_1_ms\":3113.518,\"tier2_ms\":1.579},\"state\":\"EXECUTING\",\"timestamp\":\"2026-10-01T00:50:45.113861+00:00\"}",
+        "previous_hash": "a54a1fbe1aaadfad7940b1a51ffa07f3aceb9d332f8e08eed7f9234c5c597fef",
+        "event_hash": "73acf48a5da95cd8be0e01350f84809b3fea1ac4b33c8c0099e30f77c9bfbbf0"
+      },
+      {
+        "id": "c5b92df642544db7b5167014c0f772f0",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 17,
+        "event_json": "{\"action_digest\":\"a00f0e63cc24fd010e68304099b90829cdd3978e69ce28ddd98b72f5d066002a\",\"agent_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"decision\":\"ALLOW\",\"event_type\":\"action.transition\",\"matched_rule_ids\":[\"database-read\"],\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_digest\":\"17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d\",\"policy_version\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"previous_state\":\"EXECUTING\",\"principal_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"reason_code\":\"AUTHORIZED\",\"request_id\":\"9566cd9ec89f44fda411da190429a4a0\",\"reviewer_id\":null,\"risk\":{\"category\":\"Low\",\"explanation\":\"Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities.\",\"factors\":{\"blast_radius\":0.03,\"external_egress\":0,\"impact\":0,\"provenance_uncertainty\":0,\"recent_denials\":0.0,\"sensitivity\":0.25},\"score\":5.3},\"sequence\":17,\"source_references\":[{\"passage\":\"# Example Company Policy \u2014 synthetic demo\\r\\n\\r\\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\\r\\nsales data they are authorized to read. External report sharing requires manager\\r\\napproval. The demo destination is review@example.test. This example permits only\\r\\nsynthetic data and simulated delivery.\\r\\n\\r\\nCustomer support agents may read the synthetic support summary only when assigned\\r\\na support-review task. This document is evidence for draft rules, not runtime authority.\\r\\n\",\"revision\":1,\"segment\":1,\"source_id\":\"0c31f2e70b7b49639bba5485a5350639\"}],\"stage_timings\":{\"execution_ms\":15.251,\"tier0_1_ms\":3113.518,\"tier2_ms\":1.579},\"state\":\"SUCCEEDED\",\"timestamp\":\"2026-10-01T00:50:48.391205+00:00\"}",
+        "previous_hash": "73acf48a5da95cd8be0e01350f84809b3fea1ac4b33c8c0099e30f77c9bfbbf0",
+        "event_hash": "b644f3405f81c7a81d1a465f110c81259488c3141c29044cf6238620af380370"
+      },
+      {
+        "id": "b2de40d9735243fd94ad8a6f68c4173f",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 18,
+        "event_json": "{\"action_digest\":\"3b4b8c21531203474f099f0dfa83da04cd14e7cdbc36b93e18ccf0ccbb67f94e\",\"agent_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"decision\":\"ALLOW\",\"event_type\":\"action.transition\",\"matched_rule_ids\":[\"report-create\"],\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_digest\":\"17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d\",\"policy_version\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"previous_state\":null,\"principal_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"reason_code\":\"AUTHORIZED\",\"request_id\":\"712806e802df4818b03cf5e79135c65a\",\"reviewer_id\":null,\"risk\":{\"category\":\"Low\",\"explanation\":\"Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities.\",\"factors\":{\"blast_radius\":0.03,\"external_egress\":0,\"impact\":0.25,\"provenance_uncertainty\":0,\"recent_denials\":0.0,\"sensitivity\":0.25},\"score\":10.3},\"sequence\":18,\"source_references\":[{\"passage\":\"# Example Company Policy \u2014 synthetic demo\\r\\n\\r\\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\\r\\nsales data they are authorized to read. External report sharing requires manager\\r\\napproval. The demo destination is review@example.test. This example permits only\\r\\nsynthetic data and simulated delivery.\\r\\n\\r\\nCustomer support agents may read the synthetic support summary only when assigned\\r\\na support-review task. This document is evidence for draft rules, not runtime authority.\\r\\n\",\"revision\":1,\"segment\":1,\"source_id\":\"0c31f2e70b7b49639bba5485a5350639\"}],\"stage_timings\":{\"tier0_1_ms\":3275.615,\"tier2_ms\":0.843},\"state\":\"AUTHORIZED\",\"timestamp\":\"2026-10-01T00:51:14.810519+00:00\"}",
+        "previous_hash": "b644f3405f81c7a81d1a465f110c81259488c3141c29044cf6238620af380370",
+        "event_hash": "de47572994cdb633e1cbae671dc07f7bd9509e17c4c7448f4722d07f41fed4aa"
+      },
+      {
+        "id": "0489f541ed6147df80aabe0a43d6bdfa",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 19,
+        "event_json": "{\"action_digest\":\"3b4b8c21531203474f099f0dfa83da04cd14e7cdbc36b93e18ccf0ccbb67f94e\",\"agent_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"decision\":\"ALLOW\",\"event_type\":\"action.transition\",\"matched_rule_ids\":[\"report-create\"],\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_digest\":\"17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d\",\"policy_version\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"previous_state\":\"AUTHORIZED\",\"principal_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"reason_code\":\"AUTHORIZED\",\"request_id\":\"712806e802df4818b03cf5e79135c65a\",\"reviewer_id\":null,\"risk\":{\"category\":\"Low\",\"explanation\":\"Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities.\",\"factors\":{\"blast_radius\":0.03,\"external_egress\":0,\"impact\":0.25,\"provenance_uncertainty\":0,\"recent_denials\":0.0,\"sensitivity\":0.25},\"score\":10.3},\"sequence\":19,\"source_references\":[{\"passage\":\"# Example Company Policy \u2014 synthetic demo\\r\\n\\r\\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\\r\\nsales data they are authorized to read. External report sharing requires manager\\r\\napproval. The demo destination is review@example.test. This example permits only\\r\\nsynthetic data and simulated delivery.\\r\\n\\r\\nCustomer support agents may read the synthetic support summary only when assigned\\r\\na support-review task. This document is evidence for draft rules, not runtime authority.\\r\\n\",\"revision\":1,\"segment\":1,\"source_id\":\"0c31f2e70b7b49639bba5485a5350639\"}],\"stage_timings\":{\"tier0_1_ms\":3275.615,\"tier2_ms\":0.843},\"state\":\"EXECUTING\",\"timestamp\":\"2026-10-01T00:51:19.970599+00:00\"}",
+        "previous_hash": "de47572994cdb633e1cbae671dc07f7bd9509e17c4c7448f4722d07f41fed4aa",
+        "event_hash": "ecbe54405c4a4f298ff04949d0a9f05be4e8a47b1bd251153fea247af9bfc215"
+      },
+      {
+        "id": "c8e04f728fa24defb4d692488ad95295",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 20,
+        "event_json": "{\"action_digest\":\"3b4b8c21531203474f099f0dfa83da04cd14e7cdbc36b93e18ccf0ccbb67f94e\",\"agent_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"decision\":\"ALLOW\",\"event_type\":\"action.transition\",\"matched_rule_ids\":[\"report-create\"],\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_digest\":\"17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d\",\"policy_version\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"previous_state\":\"EXECUTING\",\"principal_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"reason_code\":\"AUTHORIZED\",\"request_id\":\"712806e802df4818b03cf5e79135c65a\",\"reviewer_id\":null,\"risk\":{\"category\":\"Low\",\"explanation\":\"Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities.\",\"factors\":{\"blast_radius\":0.03,\"external_egress\":0,\"impact\":0.25,\"provenance_uncertainty\":0,\"recent_denials\":0.0,\"sensitivity\":0.25},\"score\":10.3},\"sequence\":20,\"source_references\":[{\"passage\":\"# Example Company Policy \u2014 synthetic demo\\r\\n\\r\\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\\r\\nsales data they are authorized to read. External report sharing requires manager\\r\\napproval. The demo destination is review@example.test. This example permits only\\r\\nsynthetic data and simulated delivery.\\r\\n\\r\\nCustomer support agents may read the synthetic support summary only when assigned\\r\\na support-review task. This document is evidence for draft rules, not runtime authority.\\r\\n\",\"revision\":1,\"segment\":1,\"source_id\":\"0c31f2e70b7b49639bba5485a5350639\"}],\"stage_timings\":{\"execution_ms\":10.946,\"tier0_1_ms\":3275.615,\"tier2_ms\":0.843},\"state\":\"SUCCEEDED\",\"timestamp\":\"2026-10-01T00:51:23.338764+00:00\"}",
+        "previous_hash": "ecbe54405c4a4f298ff04949d0a9f05be4e8a47b1bd251153fea247af9bfc215",
+        "event_hash": "1cdb6834284e8c0ec37b58de7cc13b172b6676ce21da36d20a01e9a03b065055"
+      },
+      {
+        "id": "9d93e7184eef429ba092224431340f41",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 21,
+        "event_json": "{\"action_digest\":\"9ac6ae16cd7131cfd1613ee1fec7b5ce7e8f38aef66b2e979bfdb5fec272cff9\",\"agent_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"decision\":\"ESCALATE\",\"event_type\":\"action.transition\",\"matched_rule_ids\":[\"report-send\"],\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"policy_digest\":\"17dff08eede355e548de5059026af8eb0b5d06dfb5fd1399ce3b1de7da15ef5d\",\"policy_version\":\"edc5428aa40b4aacb3cc36057bf149f6\",\"previous_state\":null,\"principal_id\":\"3bffb01cff51403a97ba006d2558b7a6\",\"reason_code\":\"HUMAN_REVIEW_REQUIRED\",\"request_id\":\"c1aca6ee3cef42d29c0b6b0be1578e72\",\"reviewer_id\":null,\"risk\":{\"category\":\"Medium\",\"explanation\":\"Versioned initial risk weights; server provenance and measured last-ten denial count. Not probabilities.\",\"factors\":{\"blast_radius\":0.03,\"external_egress\":1,\"impact\":0.75,\"provenance_uncertainty\":0,\"recent_denials\":0.0,\"sensitivity\":0.25},\"score\":45.3},\"sequence\":21,\"source_references\":[{\"passage\":\"# Example Company Policy \u2014 synthetic demo\\r\\n\\r\\nAnalysts may read sales data. Analysts may create CSV or JSON sales reports from\\r\\nsales data they are authorized to read. External report sharing requires manager\\r\\napproval. The demo destination is review@example.test. This example permits only\\r\\nsynthetic data and simulated delivery.\\r\\n\\r\\nCustomer support agents may read the synthetic support summary only when assigned\\r\\na support-review task. This document is evidence for draft rules, not runtime authority.\\r\\n\",\"revision\":1,\"segment\":1,\"source_id\":\"0c31f2e70b7b49639bba5485a5350639\"}],\"stage_timings\":{\"tier0_1_ms\":3778.847,\"tier2_ms\":2.584},\"state\":\"REVIEW_REQUIRED\",\"timestamp\":\"2026-10-01T00:51:55.878449+00:00\"}",
+        "previous_hash": "1cdb6834284e8c0ec37b58de7cc13b172b6676ce21da36d20a01e9a03b065055",
+        "event_hash": "87c7c0f9c27ae9f9a45cab3d3ad8902ec9028f34720aaf013ea7fa0165ff715e"
+      },
+      {
+        "id": "dd785a573d69494e97cd71dc47ce8a3d",
+        "organization_id": "430f2096245945f19785b4c1392f0d65",
+        "sequence": 22,
+        "event_json": "{\"event_type\":\"request.denied\",\"organization_id\":\"430f2096245945f19785b4c1392f0d65\",\"principal_id\":\"6bc1ecc0b19f4dceb42aab3abd34ca72\",\"sequence\":22,\"status\":403,\"timestamp\":\"2026-10-01T00:52:54.943191+00:00\"}",
+        "previous_hash": "87c7c0f9c27ae9f9a45cab3d3ad8902ec9028f34720aaf013ea7fa0165ff715e",
+        "event_hash": "c94a12aab0ae0309bd6ea092c13c07417463c2d49ba43c30366c3cd346ca8a0e"
+      }
+    ]
+  },
+  "demo": {
+    "exists": true,
+    "sales_table_exists": true,
+    "sales_rows": 3,
+    "sample": [
+      [
+        "January",
+        120000
+      ],
+      [
+        "February",
+        135000
+      ],
+      [
+        "March",
+        142000
+      ]
+    ]
+  }
+}

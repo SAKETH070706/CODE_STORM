@@ -12,7 +12,12 @@ from config import logger
 # Example for EdTech: [r"\b(cheat|exam leak|plagiarize)\b"]
 # ---------------------------------------------------------------------------
 DEFAULT_RED_FLAG_PATTERNS: List[str] = [
-    # FILL IN ONCE PROBLEM STATEMENT IS KNOWN
+    r"\b((ignore|disregard)\s+(all\s+)?(previous|above|prior)\s+(instructions?|guidelines?|rules?))\b",
+    r"\b(system\s+prompt\s+(override|reveal|leak))\b",
+    r"\b(you\s+are\s+now\s+(in\s+developer\s+mode|dan))\b",
+    r"\b(developer\s+mode\s+enabled)\b",
+    r"\b(bypass\s+governor|disregard\s+policy)\b",
+    r"\b(rm\s+-rf|drop\s+table|delete\s+from)\b",
 ]
 
 DEFAULT_CLASSIFICATION_PROMPT = """You are a real-time safety and triage classifier.

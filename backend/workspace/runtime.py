@@ -1,4 +1,4 @@
-﻿"""Organization-aware four-tier orchestration, sharing the existing controlled primitives."""
+"""Organization-aware four-tier orchestration, sharing the existing controlled primitives."""
 import csv
 import io
 import json
@@ -43,6 +43,12 @@ class Runtime:
             if action.tool not in SCHEMAS:
                 return deny("TOOL_NOT_SUPPORTED")
             action.arguments = SCHEMAS[action.tool].model_validate(action.arguments).model_dump()
+            from core.safety_scaffold import scan_for_flags
+            for val in action.arguments.values():
+                if isinstance(val, str):
+                    flagged, _ = scan_for_flags(val)
+                    if flagged:
+                        return deny("SAFETY_FLAG_TRIGGERED")
         except Exception:
             return deny("INVALID_ARGUMENTS")
         try:
@@ -90,10 +96,20 @@ class Runtime:
         result["tiers"]["tier0"] = "PASS"
         risk_policy = load_policy()
         recent = list(s.scalars(select(Action).where(Action.organization_id == identity.organization_id, Action.name == agent.id).order_by(Action.created_at.desc()).limit(10)))
+        provenance = 0.0
+        if artifact:
+            if artifact.data.get("principal_id") != agent.id:
+                provenance = 0.5
+            if not artifact.data.get("source_id"):
+                provenance = max(provenance, 0.5)
+        elif action.tool == "report.send" and not action.arguments.get("artifact_id"):
+            provenance = 1.0
+
         factors = {"impact": {"database.read": 0, "report.create": .25, "report.send": .75}[action.tool],
-                   "sensitivity": .25 if not artifact or artifact.data["sensitivity"] == "internal" else 1,
+                   "sensitivity": .25 if not artifact or artifact.data.get("sensitivity") == "internal" else 1.0,
                    "blast_radius": action.arguments.get("limit", 10) / 100 if not artifact else min(len(artifact.data.get("rows", [])) / 100, 1),
-                   "external_egress": 1 if action.tool == "report.send" else 0, "provenance_uncertainty": 0,
+                   "external_egress": 1.0 if action.tool == "report.send" else 0.0,
+                   "provenance_uncertainty": provenance,
                    "recent_denials": sum(r.state == "BLOCKED" for r in recent) / 10}
         score = round(sum(risk_policy.weights[k] * v for k, v in factors.items()), 2)
         category = "Low"
@@ -321,22 +337,84 @@ class Runtime:
             owner = Identity(row.name, row.organization_id, "agent", row.data["role"], credential_id=row.data.get("credential_id"))
         return self.execute(owner, rid)
 
-    def status(self, identity, rid):
-        with self.db.transaction(identity.organization_id) as s:
+    def status(self, identity, rid, session=None):
+        if session is not None:
+            return self._status_row_or_id(session, identity, rid)
+        with self.db.transaction(identity.organization_id, for_update=False) as s:
+            return self._status_row_or_id(s, identity, rid)
+
+    def _status_row_or_id(self, s, identity, row_or_id):
+        if isinstance(row_or_id, Action):
+            row = row_or_id
+            rid = row.id
+        else:
+            rid = row_or_id
             row = owned(s, Action, identity.organization_id, rid)
-            if identity.kind == "agent" and row.name != identity.principal_id:
-                raise HTTPException(404, "Action not found")
-            if identity.kind == "human" and not ({"activity", "review", "audit"} & identity.permissions):
-                raise HTTPException(403, "Action read permission required")
-            if row.state == "REVIEW_REQUIRED" and time.time() >= row.data["expires_at"]:
+        if identity.kind == "agent" and row.name != identity.principal_id:
+            raise HTTPException(404, "Action not found")
+        if identity.kind == "human" and not ({"activity", "review", "audit"} & identity.permissions):
+            raise HTTPException(403, "Action read permission required")
+        if row.state == "REVIEW_REQUIRED" and time.time() >= row.data["expires_at"]:
+            self.change(s, identity, row, "EXPIRED", decision="BLOCK", reason_code="EXPIRED")
+        artifact_id = row.data["action"].get("arguments", {}).get("artifact_id") or row.data["action"].get("arguments", {}).get("source_artifact_id")
+        artifact = s.get(Artifact, artifact_id) if artifact_id else None
+        sensitivity = artifact.data.get("sensitivity") if artifact and artifact.organization_id == identity.organization_id else None
+        result = {"artifact_sensitivity": sensitivity, **row.data["response"], "action": row.data["action"], "action_digest": row.data["action_digest"], "agent_id": row.name,
+                  "expires_at": row.data["expires_at"], "initiated_by": row.data.get("initiated_by")}
+        approval = s.get(Approval, rid)
+        if approval and approval.organization_id == identity.organization_id:
+            result["approval"] = approval.data
+        return result
+
+    def _batch_status(self, s, identity, rows):
+        if not rows:
+            return []
+        if identity.kind == "agent":
+            rows = [r for r in rows if r.name == identity.principal_id]
+        if identity.kind == "human" and not ({"activity", "review", "audit"} & identity.permissions):
+            raise HTTPException(403, "Action read permission required")
+        now = time.time()
+        for row in rows:
+            if row.state == "REVIEW_REQUIRED" and now >= row.data.get("expires_at", 0):
                 self.change(s, identity, row, "EXPIRED", decision="BLOCK", reason_code="EXPIRED")
-            artifact_id = row.data["action"].get("arguments", {}).get("artifact_id") or row.data["action"].get("arguments", {}).get("source_artifact_id")
-            artifact = s.get(Artifact, artifact_id) if artifact_id else None
-            sensitivity = artifact.data.get("sensitivity") if artifact and artifact.organization_id == identity.organization_id else None
-            result = {"artifact_sensitivity": sensitivity, **row.data["response"], "action": row.data["action"], "action_digest": row.data["action_digest"], "agent_id": row.name,
-                      "expires_at": row.data["expires_at"], "initiated_by": row.data.get("initiated_by")}
-            approval = s.get(Approval, rid)
-            if approval and approval.organization_id == identity.organization_id:
-                result["approval"] = approval.data
-            return result
+
+        rids = [r.id for r in rows]
+        artifact_ids = []
+        for r in rows:
+            args = r.data.get("action", {}).get("arguments", {})
+            aid = args.get("artifact_id") or args.get("source_artifact_id")
+            if aid:
+                artifact_ids.append(aid)
+
+        artifacts_by_id = {}
+        if artifact_ids:
+            arts = s.scalars(select(Artifact).where(Artifact.organization_id == identity.organization_id, Artifact.id.in_(artifact_ids))).all()
+            artifacts_by_id = {a.id: a for a in arts}
+
+        approvals_by_id = {}
+        if rids:
+            apps = s.scalars(select(Approval).where(Approval.organization_id == identity.organization_id, Approval.id.in_(rids))).all()
+            approvals_by_id = {app.id: app for app in apps}
+
+        results = []
+        for row in rows:
+            args = row.data.get("action", {}).get("arguments", {})
+            aid = args.get("artifact_id") or args.get("source_artifact_id")
+            art = artifacts_by_id.get(aid)
+            sensitivity = art.data.get("sensitivity") if art and art.organization_id == identity.organization_id else None
+            item = {
+                "artifact_sensitivity": sensitivity,
+                **row.data.get("response", {}),
+                "action": row.data.get("action"),
+                "action_digest": row.data.get("action_digest"),
+                "agent_id": row.name,
+                "expires_at": row.data.get("expires_at"),
+                "initiated_by": row.data.get("initiated_by")
+            }
+            app = approvals_by_id.get(row.id)
+            if app and app.organization_id == identity.organization_id:
+                item["approval"] = app.data
+            results.append(item)
+        return results
+
 

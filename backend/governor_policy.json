@@ -5,7 +5,7 @@
   "approval_seconds": 900,
   "destinations": ["review@example.test"],
   "export_sensitivities": ["internal"],
-  "semantic_enabled": false,
+  "semantic_enabled": true,
   "semantic_required_at": 50,
   "semantic_unavailable": "ESCALATE"
 }

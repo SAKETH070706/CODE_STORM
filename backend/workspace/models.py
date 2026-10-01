@@ -155,10 +155,13 @@ class Database:
         self.sessions = sessionmaker(self.engine, expire_on_commit=False)
 
     @contextmanager
-    def transaction(self, organization_id=None):
+    def transaction(self, organization_id=None, for_update=True):
         with self.sessions.begin() as s:
             if organization_id:
-                org = s.scalar(select(Organization).where(Organization.id == organization_id).with_for_update())
+                stmt = select(Organization).where(Organization.id == organization_id)
+                if for_update:
+                    stmt = stmt.with_for_update()
+                org = s.scalar(stmt)
                 if org is None:
                     from fastapi import HTTPException
                     raise HTTPException(404, "Workspace not found")

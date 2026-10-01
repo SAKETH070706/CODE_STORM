@@ -24,6 +24,7 @@ class Identity:
     groups: frozenset = frozenset()
     credential_id: str | None = None
     legacy_demo: bool = False
+    auth_time: int = 0  # original sign-in time (epoch s); preserved across refreshes
 
 
 def signing_secret():
@@ -38,8 +39,16 @@ def require(identity, permission):
         raise HTTPException(403, "Workspace permission denied")
 
 
-def token_for(user_id, org):
-    return jwt.encode({"sub": user_id, "org": org, "iat": int(time.time()), "exp": int(time.time()) + 900,
+TOKEN_SECONDS = 900
+MAX_SESSION_SECONDS = 8 * 3600  # absolute cap: refreshing never extends a sign-in beyond this
+
+
+def token_for(user_id, org, auth_time=None):
+    now = int(time.time())
+    auth = int(auth_time) if auth_time else now
+    # A refreshed token can never outlive the original sign-in by more than the absolute cap.
+    exp = min(now + TOKEN_SECONDS, auth + MAX_SESSION_SECONDS)
+    return jwt.encode({"sub": user_id, "org": org, "iat": now, "auth": auth, "exp": exp,
                        "iss": "png5-local", "aud": "png5-workspace"}, signing_secret(), algorithm="HS256")
 
 
@@ -68,11 +77,14 @@ def resolve(s, token):
                             options={"require": ["exp", "iat", "sub", "org"]})
     except jwt.PyJWTError:
         raise HTTPException(401, "Session expired or invalid")
+    auth_time = int(claims.get("auth", claims["iat"]))
+    if time.time() - auth_time > MAX_SESSION_SECONDS:
+        raise HTTPException(401, "Session expired; sign in again")
     user = s.get(User, claims["sub"])
     member = s.scalar(select(Membership).where(Membership.user_id == claims["sub"], Membership.organization_id == claims["org"], Membership.active.is_(True)))
     if not user or not user.active or not member:
         raise HTTPException(401, "Membership no longer active")
-    return Identity(user.id, member.organization_id, "human", permissions=frozenset(member.permissions), groups=frozenset(member.groups))
+    return Identity(user.id, member.organization_id, "human", permissions=frozenset(member.permissions), groups=frozenset(member.groups), auth_time=auth_time)
 
 
 def login(s, email, password):

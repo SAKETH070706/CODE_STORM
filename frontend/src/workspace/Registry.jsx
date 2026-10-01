@@ -4,16 +4,38 @@ import { options } from './sharedValues';
 
 export default function Registry({ registry, members, api, work, can, busy, _setDetail, session }) {
   const [key, setKey] = useState(null); // { agentId, key }
+  const [copiedKey, setCopiedKey] = useState(false);
   const [submitting, setSubmitting] = useState('');
   const [testResult, setTestResult] = useState(null); // { connectorId, data }
   const lock = useRef(false);
+  const keyBannerRef = useRef(null);
+  const testResultRef = useRef(null);
+
+  const setKeyAndScroll = (val) => {
+    setKey(val);
+    setCopiedKey(false);
+    if (val) {
+      setTimeout(() => {
+        keyBannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+  };
+
+  const setTestResultAndScroll = (val) => {
+    setTestResult(val);
+    if (val) {
+      setTimeout(() => {
+        testResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+  };
 
   const submitAction = async (actionKey, fn, successMsg) => {
-    if (lock.current || busy) return;
+    if (lock.current || busy) return { ok: false };
     lock.current = true;
     setSubmitting(actionKey);
     try {
-      await work(fn, successMsg);
+      return await work(fn, successMsg);
     } finally {
       lock.current = false;
       setSubmitting('');
@@ -93,7 +115,7 @@ export default function Registry({ registry, members, api, work, can, busy, _set
                           `test-${c.id}`,
                           async () => {
                             const res = await api(`/connectors/${c.id}/test`, {});
-                            setTestResult({ connectorId: c.id, data: res });
+                            setTestResultAndScroll({ connectorId: c.id, data: res });
                           },
                           'Connection test completed'
                         )
@@ -107,16 +129,18 @@ export default function Registry({ registry, members, api, work, can, busy, _set
                 {/* INLINE TEST RESULT RIGHT UNDER THE CONNECTOR */}
                 {testResult && testResult.connectorId === c.id && (
                   <div
+                    ref={testResultRef}
                     style={{
                       marginTop: '10px',
-                      padding: '10px',
+                      padding: '12px',
                       background: '#ffffff',
                       border: '1px solid #cbd5e1',
                       borderRadius: '6px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong style={{ fontSize: '13px' }}>Connection test output:</strong>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '13px', color: 'var(--text-strong, #0f172a)' }}>✓ Connection test output:</strong>
                       <button
                         className="secondary"
                         style={{ padding: '2px 8px', fontSize: '12px' }}
@@ -156,7 +180,7 @@ export default function Registry({ registry, members, api, work, can, busy, _set
               label="Business role"
               name="role"
               defaultValue="data_analyst"
-              pattern="[a-z][a-z0-9_-]{1,49}"
+              pattern="[a-z][-a-z0-9_]{1,49}"
               required
             />
             <button disabled={submitting === 'agent'}>
@@ -198,7 +222,7 @@ export default function Registry({ registry, members, api, work, can, busy, _set
                           a.id,
                           async () => {
                             const generated = await api(`/agents/${a.id}/key`, {});
-                            setKey({ agentId: a.id, key: generated.key });
+                            setKeyAndScroll({ agentId: a.id, key: generated.key });
                           },
                           'Key generated securely'
                         )
@@ -226,35 +250,42 @@ export default function Registry({ registry, members, api, work, can, busy, _set
                 {/* INLINE GENERATED KEY BANNER RIGHT INSIDE THE AGENT CARD */}
                 {key && key.agentId === a.id && (
                   <div
-                    className="panel secret"
+                    ref={keyBannerRef}
+                    className="secret"
                     style={{
                       marginTop: '12px',
                       padding: '12px',
-                      background: '#eff6ff',
-                      border: '1px solid #bfdbfe',
-                      borderRadius: '6px',
+                      borderRadius: '8px',
+                      border: '1.5px solid var(--accent, #6366f1)',
+                      background: 'rgba(99, 102, 241, 0.05)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                     }}
                   >
-                    <h4 style={{ margin: '0 0 6px 0', color: '#1e3a8a' }}>Copy this agent key now:</h4>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#3b82f6' }}>
-                      Displayed once and stored only as a SHA-256 hash.
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <h4 style={{ margin: 0, color: 'var(--text-strong, #0f172a)' }}>🔑 Generated Agent Key:</h4>
+                      <span className="badge" style={{ fontSize: '11px', background: '#e0e7ff', color: '#3730a3' }}>Display Once</span>
+                    </div>
+                    <p className="muted" style={{ margin: '0 0 8px 0', fontSize: '12px' }}>
+                      Stored only as SHA-256 hash. Copy and save it now:
                     </p>
-                    <code
-                      style={{
-                        display: 'block',
-                        padding: '8px',
-                        background: '#1e293b',
-                        color: '#38bdf8',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        wordBreak: 'break-all',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      {key.key}
-                    </code>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <code style={{ flex: 1, padding: '8px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', wordBreak: 'break-all', fontSize: '13px', fontWeight: 600 }}>
+                        {key.key}
+                      </code>
+                      <button
+                        style={{ padding: '6px 14px', whiteSpace: 'nowrap' }}
+                        onClick={() => {
+                          navigator.clipboard?.writeText(key.key);
+                          setCopiedKey(true);
+                          setTimeout(() => setCopiedKey(false), 2000);
+                        }}
+                      >
+                        {copiedKey ? '✓ Copied!' : 'Copy Key'}
+                      </button>
+                    </div>
                     <button
-                      style={{ padding: '4px 12px', fontSize: '12px' }}
+                      className="secondary"
+                      style={{ marginTop: '8px', padding: '4px 12px', fontSize: '12px' }}
                       onClick={() => setKey(null)}
                     >
                       I have saved it securely
@@ -301,6 +332,7 @@ export default function Registry({ registry, members, api, work, can, busy, _set
                   () =>
                     api('/tasks', {
                       name: f.get('name'),
+                      description: f.get('description') || '',
                       roles: f
                         .get('roles')
                         .split(',')
@@ -313,6 +345,7 @@ export default function Registry({ registry, members, api, work, can, busy, _set
               }
             >
               <Field label="Task name" name="name" defaultValue="sales-report" required />
+              <Field label="Description" name="description" placeholder="e.g. Sales Report Generator" />
               <Field
                 label="Permitted business roles (comma separated)"
                 name="roles"
@@ -344,22 +377,28 @@ export default function Registry({ registry, members, api, work, can, busy, _set
                 style={{
                   marginBottom: '12px',
                   padding: '12px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: '#fbfcfc',
+                  border: '1px solid var(--line)',
                   borderRadius: '6px',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ margin: 0 }}>{t.name}</h3>
-                  <small style={{ color: '#64748b' }}>{t.id.slice(0, 10)}…</small>
+                  <small>{t.id.slice(0, 10)}…</small>
                 </div>
-                <p style={{ margin: '4px 0 8px 0', fontSize: '13px', color: '#475569' }}>
+                {t.data?.description && (
+                  <p style={{ margin: '2px 0 6px 0', fontSize: '13px', fontWeight: 500, color: 'var(--text-strong, #0f172a)' }}>
+                    {t.data.description}
+                  </p>
+                )}
+                <p style={{ margin: '4px 0 8px 0', fontSize: '13px', color: 'var(--muted)' }}>
                   Roles: <code>{t.data.roles.join(', ')}</code> · {t.data.agents.length} agent(s) ·{' '}
                   {t.data.resources.length} resource(s)
                 </p>
 
                 {can('agents') && (
                   <Form
+                    className="subform"
                     title="Update assignments"
                     onSubmit={f =>
                       submitAction(
@@ -375,7 +414,13 @@ export default function Registry({ registry, members, api, work, can, busy, _set
                       )
                     }
                   >
-                    <Choice label="Assigned agents" name="agents" multiple defaultValue={t.data.agents}>
+                    <Choice
+                      key={`${t.id}-${(t.data.agents || []).slice().sort().join(',')}`}
+                      label="Assigned agents"
+                      name="agents"
+                      multiple
+                      defaultValue={t.data.agents}
+                    >
                       {options(registry.agents)}
                     </Choice>
                     <button disabled={submitting === `task-assign-${t.id}`}>
@@ -395,68 +440,101 @@ export default function Registry({ registry, members, api, work, can, busy, _set
           SECTION 4: WORKSPACE MEMBERSHIP (PROVISION / UPDATE)
       ───────────────────────────────────────────────────────────── */}
       {can('members') && (
-        <Form
-          title="5. Provision or update membership"
-          onSubmit={f =>
-            submitAction(
-              'member',
-              () =>
-                api('/members', {
-                  email: f.get('email'),
-                  password: f.get('password') || null,
-                  permissions: f
-                    .get('permissions')
-                    .split(',')
-                    .map(p => p.trim())
-                    .filter(Boolean),
-                  groups: f.getAll('groups'),
-                }),
-              'Membership updated successfully'
-            )
-          }
-        >
-          <Field label="Email" type="email" name="email" required />
-          <Field
-            label="Initial password (for a new account only)"
-            type="password"
-            name="password"
-            minLength={12}
-            autoComplete="new-password"
-          />
-          <Field
-            label="Workspace permissions (comma separated)"
-            name="permissions"
-            defaultValue="review,activity,audit"
-          />
-          <Choice label="Reviewer groups" name="groups" multiple>
-            {options(registry.groups)}
-          </Choice>
-          <p className="muted">
-            Available permissions: members, sources, drafts, publish, agents, connectors, review, audit, activity,
-            playground.
-          </p>
-          <button disabled={submitting === 'member'}>
-            {submitting === 'member' ? 'Saving membership...' : 'Save membership'}
-          </button>
-          <Details value={members} />
-          {members.map(m => (
-            <button
-              type="button"
-              key={m.id}
-              className="danger"
-              disabled={submitting === `revoke-member-${m.id}` || !m.active || m.user_id === session?.principal_id}
-              onClick={() =>
+        <section className="grid" style={{ alignItems: 'start', marginBottom: '24px' }}>
+          <div>
+            <Form
+              title="5. Provision or update membership"
+              onSubmit={f =>
                 submitAction(
-                  `revoke-member-${m.id}`,
-                  () => api(`/members/${m.id}/revoke`, {}),
-                  `Membership for ${m.email} revoked`
+                  'member',
+                  () =>
+                    api('/members', {
+                      email: f.get('email'),
+                      password: f.get('password') || null,
+                      permissions: f
+                        .get('permissions')
+                        .split(',')
+                        .map(p => p.trim())
+                        .filter(Boolean),
+                      groups: f.getAll('groups'),
+                    }),
+                  'Membership updated successfully'
                 )
               }
             >
-              {submitting === `revoke-member-${m.id}` ? 'Revoking...' : `Revoke ${m.email}`}
-            </button>
-          ))}
-        </Form>
+              <Field label="Email" type="email" name="email" required />
+              <Field
+                label="Initial password (for a new account only)"
+                type="password"
+                name="password"
+                minLength={12}
+                autoComplete="new-password"
+              />
+              <Field
+                label="Workspace permissions (comma separated)"
+                name="permissions"
+                defaultValue="review,activity,audit"
+              />
+              <Choice label="Reviewer groups" name="groups" multiple>
+                {options(registry.groups)}
+              </Choice>
+              <p className="muted">
+                Available permissions: members, sources, drafts, publish, agents, connectors, review, audit, activity,
+                playground.
+              </p>
+              <button disabled={submitting === 'member'}>
+                {submitting === 'member' ? 'Saving membership...' : 'Save membership'}
+              </button>
+            </Form>
+          </div>
+
+          <div className="panel">
+            <h2>Workspace members ({members.length})</h2>
+            {members.length ? (
+              members.map(m => (
+                <article
+                  className="record"
+                  key={m.id}
+                  style={{
+                    marginBottom: '12px',
+                    padding: '12px',
+                    background: '#fbfcfc',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong style={{ fontSize: '14px' }}>{m.email}</strong>
+                    <Badge value={m.active ? 'ACTIVE' : 'REVOKED'} />
+                  </div>
+                  <p style={{ margin: '4px 0 8px 0', fontSize: '12px', color: 'var(--muted)' }}>
+                    Permissions: {m.permissions?.length ? m.permissions.join(', ') : 'none'}
+                    {m.groups?.length ? ` · Groups: ${m.groups.length}` : ''}
+                  </p>
+                  {m.active && m.user_id !== session?.principal_id && (
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={submitting === `revoke-member-${m.id}`}
+                      onClick={() =>
+                        submitAction(
+                          `revoke-member-${m.id}`,
+                          () => api(`/members/${m.id}/revoke`, {}),
+                          `Membership for ${m.email} revoked`
+                        )
+                      }
+                      style={{ fontSize: '12px', padding: '4px 10px' }}
+                    >
+                      {submitting === `revoke-member-${m.id}` ? 'Revoking...' : `Revoke ${m.email}`}
+                    </button>
+                  )}
+                </article>
+              ))
+            ) : (
+              <p className="muted">No other members in this workspace.</p>
+            )}
+          </div>
+        </section>
       )}
     </>
   );

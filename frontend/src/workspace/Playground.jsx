@@ -1,4 +1,4 @@
-import React,{useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import {Form,Field,Choice} from './shared';
 import {options,pretty} from './sharedValues';
 import {ActionResult} from './Workflow';
@@ -16,6 +16,8 @@ export default function Playground({registry,overview,actions,api,work,busy,can,
   const resources=resourcesFor(tool);
   const artifacts=[...new Map([...actions,...localActions].filter(a=>a.agent_id===agent&&a.action?.task_id===task&&a.state==='SUCCEEDED'&&a.result?.artifact_id&&a.action.tool===(tool==='report.create'?'database.read':'report.create')).map(a=>[a.result.artifact_id,a])).values()];
   const result=latest&&(actions.find(a=>a.request_id===latest.request_id)||latest);
+  const resultRef=useRef(null);
+  useEffect(()=>{if(latest?.request_id)resultRef.current?.scrollIntoView?.({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});},[latest?.request_id]);
   function update(field,value){setValues(old=>({...old,[field]:value}));}
   function chooseTool(nextTool,artifact=''){
     const next=defaults(nextTool);if(nextTool==='report.create')next.source_artifact_id=artifact;if(nextTool==='report.send')next.artifact_id=artifact;
@@ -51,7 +53,7 @@ export default function Playground({registry,overview,actions,api,work,busy,can,
   <div className="row"><button disabled={busy||!selectionValid}>Submit governed action</button><button type="button" className="secondary" onClick={()=>{if(!advanced)setRaw(pretty(values));setAdvanced(!advanced);}}>{advanced?'Use guided fields':'Use advanced JSON'}</button></div>
   <p className="muted">Tier 0 checks scope and policy; Tier 1 scores risk; Tier 2 is conditional; Tier 3 records the outcome and controls execution.</p>
   </Form>
-  {result&&<section className="panel" aria-label="Latest action result"><h2>Latest action result</h2><ActionResult action={result} navigate={navigate} can={can}/>
+  {result&&<section ref={resultRef} className="panel" aria-label="Latest action result"><h2>Latest action result</h2><ActionResult action={result} navigate={navigate} can={can}/>
     {result.state==='SUCCEEDED'&&result.result?.artifact_id&&['database.read','report.create'].includes(result.action?.tool)&&<button disabled={busy} onClick={()=>chooseTool(result.action.tool==='database.read'?'report.create':'report.send',result.result.artifact_id)}>{result.action.tool==='database.read'?'Use this data to create a report':'Use this report for simulated delivery'}</button>}
   </section>}
   </>;

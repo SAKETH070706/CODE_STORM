@@ -285,10 +285,10 @@ cd backend
 python -m pytest tests/
 ```
 
-Run production pipeline integration tests:
+Run workspace integration tests:
 
 ```bash
-python -m pytest tests/test_production_pipeline.py -v
+python -m pytest tests/test_workspace_integration.py -v
 ```
 
 Build the frontend for production:

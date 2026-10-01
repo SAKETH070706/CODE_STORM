@@ -75,7 +75,7 @@ export default function Navbar() {
           Gemini: <span>2.5-flash</span>
         </div>
         <div className="model-pill" title="Vector Database">
-          Vector: <span>Pinecone</span>
+          Vector: <span>Chroma</span>
         </div>
 
         <div className="status-badge" title={statusDetail}>

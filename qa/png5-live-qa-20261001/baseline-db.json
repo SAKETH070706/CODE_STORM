@@ -1,0 +1,78 @@
+{
+  "admin": [
+    {
+      "id": "6bc1ecc0b19f4dceb42aab3abd34ca72",
+      "email": "admin@example.test",
+      "active": true,
+      "can_create_workspaces": true,
+      "has_password_hash": true
+    }
+  ],
+  "organizations": [
+    {
+      "id": "430f2096245945f19785b4c1392f0d65",
+      "name": "CODE_STORM Workspace",
+      "active_policy_id": null,
+      "audit_sequence": 0,
+      "audit_head": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "admin_memberships": [
+    {
+      "id": "cf88bb5177b747518dd112209e3141a0",
+      "user_id": "6bc1ecc0b19f4dceb42aab3abd34ca72",
+      "organization_id": "430f2096245945f19785b4c1392f0d65",
+      "permissions": [
+        "activity",
+        "agents",
+        "audit",
+        "connectors",
+        "drafts",
+        "members",
+        "playground",
+        "publish",
+        "review",
+        "sources"
+      ],
+      "groups": [],
+      "active": true
+    }
+  ],
+  "counts": {
+    "users": 1,
+    "memberships": 1,
+    "agents": 0,
+    "tasks": 0,
+    "connectors": 0,
+    "reviewer_groups": 0,
+    "policies": 0,
+    "policy_sources": 0,
+    "workspace_actions": 0,
+    "workspace_artifacts": 0,
+    "workspace_approvals": 0,
+    "workspace_outbox": 0,
+    "compilation_jobs": 0,
+    "agent_credentials": 0,
+    "workspace_idempotency": 0,
+    "workspace_audit": 0
+  },
+  "demo": {
+    "exists": true,
+    "sales_table_exists": true,
+    "sales_rows": 3,
+    "sample": [
+      [
+        "January",
+        120000
+      ],
+      [
+        "February",
+        135000
+      ],
+      [
+        "March",
+        142000
+      ]
+    ]
+  }
+}

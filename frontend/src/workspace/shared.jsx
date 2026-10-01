@@ -1,8 +1,8 @@
-﻿import React, { useContext, useRef, useState } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 import { describeError, isCancelled } from '../workspaceClient';
 import {RequestContext,pretty} from './sharedValues';
 import RequestProgress from './RequestProgress';
-export function Form({ title, children, onSubmit }) {
+export function Form({ title, children, onSubmit, className = "panel" }) {
   const busy = useContext(RequestContext);
   const lock = useRef(false);
   const [submitting, setSubmitting] = useState(false), [error, setError] = useState('');
@@ -11,12 +11,16 @@ export function Form({ title, children, onSubmit }) {
     if (lock.current || busy) return;
     const form = new FormData(event.currentTarget);
     lock.current = true; setSubmitting(true); setError('');
-    try { await onSubmit(form); }
+    try {
+      const outcome = await onSubmit(form);
+      // work() reports failures by returning them; show the reason right beside the inputs as well as in a toast.
+      if (outcome && outcome.ok === false && outcome.error) setError(describeError(outcome.error));
+    }
     catch (e) { if (!isCancelled(e)) setError(describeError(e)); }
     finally { lock.current = false; setSubmitting(false); }
     // Keep inputs on both errors and success. Assignment forms must never reset to old defaults.
   }
-  return <form className="panel" onSubmit={submit} aria-busy={submitting}>
+  return <form className={className} onSubmit={submit} aria-busy={submitting}>
     <h3>{title}</h3><fieldset disabled={busy || submitting} className="form-fields">{children}</fieldset>
     {submitting && <RequestProgress/>}
     {error && <p className="error" role="alert">{error}</p>}

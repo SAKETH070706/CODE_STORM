@@ -48,3 +48,29 @@ test('storage restrictions do not crash login or logout',()=>{
   try{assert.equal(safeStorage.get('token'),'');assert.doesNotThrow(()=>safeStorage.set('token','value'));assert.doesNotThrow(()=>safeStorage.set('token',''));}
   finally{if(original)Object.defineProperty(globalThis,'sessionStorage',original);else delete globalThis.sessionStorage;}
 });
+import {tokenExpiry,sessionAction} from '../src/workspaceClient.js';
+const jwtWith=payload=>'h.'+Buffer.from(JSON.stringify(payload)).toString('base64url')+'.s';
+test('token expiry is read for timing only and tolerates non-JWT tokens',()=>{
+  assert.equal(tokenExpiry(jwtWith({exp:1700000000})),1700000000000);
+  for(const bad of ['','offline-test-session','a.b.c','a..c',null,undefined,jwtWith({exp:'soon'})])assert.equal(tokenExpiry(bad),null);
+});
+test('session timer renews when active, warns when idle, and never acts on unknown expiry',()=>{
+  const now=1_000_000,min=60000;
+  assert.equal(sessionAction({expiresAt:null,now,active:true,warned:false}),'none');
+  assert.equal(sessionAction({expiresAt:now+10*min,now,active:true,warned:false}),'none');
+  assert.equal(sessionAction({expiresAt:now+4*min,now,active:true,warned:false}),'renew');
+  assert.equal(sessionAction({expiresAt:now+4*min,now,active:false,warned:false}),'none');
+  assert.equal(sessionAction({expiresAt:now+90000,now,active:false,warned:false}),'warn');
+  assert.equal(sessionAction({expiresAt:now+90000,now,active:false,warned:true}),'none');
+  assert.equal(sessionAction({expiresAt:now+90000,now,active:true,warned:true,atCap:false}),'renew');
+  assert.equal(sessionAction({expiresAt:now+90000,now,active:true,warned:false,atCap:true}),'warn-final');
+  assert.equal(sessionAction({expiresAt:now-1,now,active:true,warned:false}),'none');
+});
+test('clearPrefix removes only matching drafts',()=>{
+  const store=new Map([['png5_draft_a','1'],['png5_draft_b','2'],['png5_token','t']]);
+  globalThis.sessionStorage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k),get length(){return store.size;},key:i=>[...store.keys()][i]};
+  Object.defineProperty(globalThis.sessionStorage,'__keys',{value:()=>[...store.keys()]});
+  const real=Object.keys;Object.keys=o=>o===globalThis.sessionStorage?[...store.keys()]:real(o);
+  try{safeStorage.clearPrefix('png5_draft_');}finally{Object.keys=real;delete globalThis.sessionStorage;}
+  assert.deepEqual([...store.keys()],['png5_token']);
+});

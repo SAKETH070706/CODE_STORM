@@ -1,0 +1,716 @@
+[
+  {
+    "at": "2026-10-01T00:35:28.363Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "at": "2026-10-01T00:39:07.354Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/overview",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:39:07.358Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:39:07.360Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/reviews",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:39:07.361Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/members",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:43:33.879Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Pattern attribute value [a-z][a-z0-9_-]{1,49} is not a valid regular expression: Uncaught SyntaxError: Invalid regular expression: /[a-z][a-z0-9_-]{1,49}/v: Invalid character in character class"
+  },
+  {
+    "at": "2026-10-01T00:43:33.892Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/overview",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:43:33.897Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/registry",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:43:33.900Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/sources",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:43:33.903Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/policies",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:43:33.906Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/compilations",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:43:33.909Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:43:33.911Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/reviews",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:43:33.913Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/members",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:44:50.361Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/overview",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:44:50.366Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/registry",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:44:50.370Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/sources",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:44:50.375Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/policies",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:44:50.378Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/compilations",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:44:50.382Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:44:50.386Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/reviews",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:44:50.389Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/members",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:46:27.073Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/reviews",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:46:27.087Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/members",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:47:13.747Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:47:23.750Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:47:33.749Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:47:43.746Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:47:53.748Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:48:03.739Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:48:13.748Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "at": "2026-10-01T00:48:22.344Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/registry",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:48:22.357Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/sources",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:48:22.364Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/policies",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:48:22.372Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/compilations",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:48:22.382Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:48:22.390Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/reviews",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:48:22.397Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/members",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:48:23.737Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:48:38.758Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:48:43.751Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:48:57.317Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:49:03.750Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:49:16.881Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:49:23.749Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:49:33.750Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:49:43.756Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:49:53.749Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "at": "2026-10-01T00:50:05.174Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/overview",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:50:05.197Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/registry",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:50:05.208Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/sources",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:50:05.219Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/compilations",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:50:05.231Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:50:05.241Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/reviews",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:50:05.251Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/members",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "type": "http",
+    "path": "/api/session/refresh",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T00:50:05.272Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "at": "2026-10-01T00:55:12.059Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:56:46.492Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/overview",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:56:46.521Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/registry",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:56:46.548Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/sources",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:56:46.573Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/policies",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:56:46.599Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/compilations",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:56:46.624Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:56:46.654Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/reviews",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T00:56:46.683Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/members",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:00:07.818Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/session",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:03:21.779Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:04:06.397Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:04:44.860Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "type": "http",
+    "path": "/api/members",
+    "status": 401
+  },
+  {
+    "at": "2026-10-01T01:05:08.534Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "at": "2026-10-01T01:05:15.745Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:05:54.155Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:05:54.329Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Pattern attribute value [a-z][a-z0-9_-]{1,49} is not a valid regular expression: Uncaught SyntaxError: Failed to execute 'checkValidity' on 'HTMLInputElement': Invalid regular expression: /[a-z][a-z0-9_-]{1,49}/v: Invalid character in character class"
+  },
+  {
+    "at": "2026-10-01T01:06:33.332Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:06:34.252Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/ready",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "type": "http",
+    "path": "/api/process",
+    "status": 404
+  },
+  {
+    "at": "2026-10-01T01:06:34.876Z",
+    "page": "admin",
+    "type": "console",
+    "message": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  },
+  {
+    "at": "2026-10-01T01:06:35.388Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/session",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:07:08.703Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:07:55.498Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:08:41.472Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:09:28.184Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:10:14.155Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:11:03.066Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:11:48.760Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:12:27.369Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:13:13.361Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:13:38.840Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/sources",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:13:38.914Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:13:38.990Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/reviews",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:13:39.058Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/members",
+    "error": "net::ERR_ABORTED"
+  },
+  {
+    "at": "2026-10-01T01:14:19.696Z",
+    "page": "admin",
+    "type": "requestfailed",
+    "path": "/api/actions",
+    "error": "net::ERR_ABORTED"
+  }
+]

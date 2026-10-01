@@ -9,8 +9,8 @@ This guide describes the end-to-end user navigation flow for the **PNG5 Enterpri
 - **Frontend URL:** `http://localhost:5173/`
 - **Backend API:** `http://127.0.0.1:8000`
 - **Default Administrator Credentials:**
-  - **Email:** `admin@example.test`
-  - **Password:** `Admin@Hackathon2026!`
+  - **Email:** `admin@example.test` (or configured via `ADMIN_EMAIL`)
+  - **Password:** Configured via `ADMIN_PASSWORD` in `backend/.env` (provisioned during setup / seed)
 
 ---
 

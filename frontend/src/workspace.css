@@ -14,3 +14,22 @@
 .workspace .tier-flow{list-style:none;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:18px 0}.workspace .tier-flow li{border-left:3px solid var(--brand);padding:8px 16px;background:#f3f6f7;min-width:0}.workspace .tier-flow p{font-size:13px}.workspace .action-result code{overflow-wrap:anywhere}
 .workspace .request-progress{display:flex;align-items:center;gap:12px;padding:12px;background:#e5f3ed;color:#165443;border-radius:7px;margin:12px 0}.workspace .request-progress p{font-size:13px;margin:3px 0}.workspace .request-spinner{width:18px;height:18px;border:2px solid #9bc9bb;border-top-color:#126958;border-radius:50%;animation:request-spin 1s linear infinite;flex-shrink:0}@keyframes request-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.workspace .request-spinner{animation:none}}@media(max-width:650px){.workspace .tier-flow{grid-template-columns:1fr}}
+
+/* Floating notifications and the sticky response panel: feedback stays visible wherever the control was. */
+.workspace .toast-host{position:fixed;top:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:10px;width:min(420px,calc(100vw - 2rem));pointer-events:none}
+.workspace .toast{pointer-events:auto;display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);box-shadow:0 8px 24px #10202a2e;font-size:14px;line-height:1.45;animation:toast-in .18s ease-out}
+.workspace .toast-success{border-left:4px solid var(--brand);background:#f1faf6}
+.workspace .toast-error{border-left:4px solid #a8313d;background:#fff4f4;color:#7d2129}
+.workspace .toast-info{border-left:4px solid #e4a52b;background:#fffaf0}
+.workspace .toast-message{flex:1;min-width:0;overflow-wrap:anywhere}
+.workspace .toast button{padding:4px 10px;font-size:12px}
+.workspace .toast .toast-close{background:transparent;color:inherit;border:0;font-size:20px;line-height:1;padding:0 4px;opacity:.65}
+.workspace .toast .toast-action{background:var(--ink)}
+@keyframes toast-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.workspace .toast{animation:none}}
+@media(max-width:650px){.workspace .toast-host{top:.75rem;right:.75rem;left:.75rem;width:auto}}
+.workspace .detail-panel{scroll-margin-top:12px}
+.workspace .detail-head{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;padding:8px 0;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.workspace .detail-head h2{margin:0}
+.workspace .subform{margin-top:10px;padding:0;background:transparent;border:0;box-shadow:none}
+.workspace .subform h3{font-size:14px;margin-bottom:8px}

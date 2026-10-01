@@ -1,4 +1,4 @@
-﻿/** Shared transport: deadline covers headers AND body; writes are never auto-retried. */
+/** Shared transport: deadline covers headers AND body; writes are never auto-retried. */
 export class RequestError extends Error {
   constructor(message, { status = 0, code = 'NETWORK_ERROR', requestId = null, uncertain = false } = {}) {
     super(message); this.name = 'RequestError'; Object.assign(this, { status, code, requestId, uncertain });
@@ -74,4 +74,28 @@ export const mayReview = (action, id) => action.state === 'REVIEW_REQUIRED' && a
 export const safeStorage = {
   get(key) { try { return sessionStorage.getItem(key) || ''; } catch { return ''; } },
   set(key, value) { try { if (value) sessionStorage.setItem(key, value); else sessionStorage.removeItem(key); } catch { /* Storage disabled: current in-memory session still works. */ } },
+  clearPrefix(prefix) { try { Object.keys(sessionStorage).filter(k => k.startsWith(prefix)).forEach(k => sessionStorage.removeItem(k)); } catch { /* Storage disabled. */ } },
 };
+/** Unsaved-work keys. Kept across an expired session, cleared on explicit sign-out. */
+export const DRAFT_PREFIX = 'png5_draft_';
+/**
+ * Client-side read of the JWT `exp` claim, for UX timing only (warning/renewal). It is NOT trusted:
+ * the server re-validates signature, expiry and live membership on every request.
+ */
+export function tokenExpiry(token) {
+  try {
+    const part = String(token || '').split('.')[1];
+    if (!part) return null;
+    const json = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')));
+    return typeof json.exp === 'number' ? json.exp * 1000 : null;
+  } catch { return null; }
+}
+/** Decide what the session timer should do. Pure so it can be unit-tested. */
+export function sessionAction({ expiresAt, now, active, warned, atCap }) {
+  if (!expiresAt) return 'none';
+  const left = expiresAt - now;
+  if (left <= 0) return 'none';
+  if (left <= 5 * 60000 && active && !atCap) return 'renew';
+  if (left <= 2 * 60000 && !warned) return atCap ? 'warn-final' : 'warn';
+  return 'none';
+}
