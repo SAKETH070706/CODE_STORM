@@ -143,8 +143,11 @@ def readiness():
 async def safe_error(request, exc):
     from starlette.responses import JSONResponse
     from config import logger
-    logger.exception("Unhandled server exception on %s %s: %s", request.method, request.url.path, exc)
-    return JSONResponse({"detail": "Service unavailable; no new execution is permitted without durable authorization."}, status_code=503)
+    body = {"detail": "Service unavailable; no new execution is permitted without durable authorization."}
+    rid = getattr(request.state, "request_id", None)
+    if rid:
+        body["request_id"] = rid
+    return JSONResponse(body, status_code=503)
 
 
 # Rejected authenticated HTTP requests are audited without body/header content.

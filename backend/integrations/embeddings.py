@@ -59,6 +59,7 @@ class EmbeddingService:
         vec = [0.0] * self.dimension
         words = text.lower().split()
         if not words:
+            vec[0] = 1.0
             return vec
 
         for word in words:
@@ -71,6 +72,8 @@ class EmbeddingService:
         norm = math.sqrt(sum(x * x for x in vec))
         if norm > 0:
             vec = [x / norm for x in vec]
+        else:
+            vec[0] = 1.0
         return vec
 
     def embed_documents(self, texts: List[str], batch_size: int = 64) -> List[List[float]]:

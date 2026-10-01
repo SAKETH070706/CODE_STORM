@@ -1,6 +1,7 @@
 import re
 import json
 import time
+import random
 import base64
 import logging
 from typing import Optional, Dict, Any
@@ -224,8 +225,8 @@ def call_llm(
                                 error="DEADLINE_EXCEEDED"
                             )
                         if _is_transient_error(err_str) and attempt < (MAX_RETRIES_PER_MODEL - 1):
-                            sleep_time = 0.5 * (attempt + 1)
-                            logger.warning(f"Groq {model_id} transient error ({err_str[:80]}), retrying in {sleep_time}s...")
+                            sleep_time = random.uniform(0.1, 0.5 * (attempt + 1))
+                            logger.warning(f"Groq {model_id} transient error ({err_str[:80]}), retrying in {sleep_time:.2f}s...")
                             try:
                                 rem = remaining()
                             except TimeoutError:
@@ -319,8 +320,8 @@ def call_llm(
                                 error="DEADLINE_EXCEEDED"
                             )
                         if _is_transient_error(err_str) and attempt < (MAX_RETRIES_PER_MODEL - 1):
-                            sleep_time = 0.5 * (attempt + 1)
-                            logger.warning(f"Gemini {gem_model} transient error, retrying in {sleep_time}s...")
+                            sleep_time = random.uniform(0.1, 0.5 * (attempt + 1))
+                            logger.warning(f"Gemini {gem_model} transient error, retrying in {sleep_time:.2f}s...")
                             try:
                                 rem = remaining()
                             except TimeoutError:

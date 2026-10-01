@@ -126,9 +126,13 @@ def ingest_knowledge(folder_path: str) -> int:
         docs.append(c["text"])
         metas.append({"source_file": c["source_file"]})
 
-    collection.upsert(ids=ids, documents=docs, metadatas=metas)
-    logger.info(f"Ingested {len(ids)} unique chunks into Chroma collection '{CHROMA_COLLECTION_NAME}'.")
-    return len(ids)
+    try:
+        collection.upsert(ids=ids, documents=docs, metadatas=metas)
+        logger.info(f"Ingested {len(ids)} unique chunks into Chroma collection '{CHROMA_COLLECTION_NAME}'.")
+        return len(ids)
+    except Exception as e:
+        logger.error(f"Failed to upsert chunks into Chroma collection '{CHROMA_COLLECTION_NAME}': {e}")
+        return 0
 
 def retrieve(query: str, k: int = 4, max_distance: float = 0.70) -> List[Chunk]:
     """Queries Chroma for relevant chunks. Lower distance = more similar."""

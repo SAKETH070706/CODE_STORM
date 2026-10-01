@@ -130,7 +130,11 @@ def create_app(database=None):
     @app.exception_handler(Exception)
     async def unavailable(request, error):
         config.logger.exception("Unhandled server exception on %s %s: %s", request.method, request.url.path, error)
-        return JSONResponse({"detail": "Service unavailable; inspect server configuration or retry status lookup"}, 503)
+        body = {"detail": "Service unavailable; inspect server configuration or retry status lookup"}
+        rid = getattr(request.state, "request_id", None)
+        if rid:
+            body["request_id"] = rid
+        return JSONResponse(body, 503)
 
     @app.exception_handler(RequestValidationError)
     async def invalid(request, error):

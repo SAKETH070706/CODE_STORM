@@ -203,9 +203,12 @@ def _isolated(content=None, extension=None, url=None):
     import base64
     payload = {"content": base64.b64encode(content).decode() if content is not None else None, "extension": extension,
                "url": url, "hosts": [h.strip().lower() for h in os.getenv("POLICY_URL_HOSTS", "").split(",") if h.strip()]}
-    result = subprocess.run([sys.executable, "-m", "workspace.sources"], input=json.dumps(payload).encode(),
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=12,
-                            cwd=Path(__file__).resolve().parents[1], creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+    try:
+        result = subprocess.run([sys.executable, "-m", "workspace.sources"], input=json.dumps(payload).encode(),
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=12,
+                                cwd=Path(__file__).resolve().parents[1], creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+    except subprocess.TimeoutExpired:
+        raise TimeoutError("Source extraction timed out within 12 seconds")
     if result.returncode or len(result.stdout) > 4 * MAX_FILE:
         raise ValueError("Policy extraction failed within resource limits")
     response = json.loads(result.stdout)
