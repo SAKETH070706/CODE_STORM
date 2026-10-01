@@ -418,7 +418,10 @@ def create_app(database=None):
             return [public(r) for r in listed(s, CompilationJob, who.organization_id)]
 
     async def action_body(request):
-        from api.governor import body
+        try:
+            from api.governor import body
+        except ImportError:
+            from backend.api.governor import body
         return await body(request)
 
     @app.post("/api/authorize")
