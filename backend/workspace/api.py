@@ -351,7 +351,7 @@ def create_app(database=None):
     @app.get("/api/sources")
     def sources(request: Request, who=Depends(identity)):
         require_any(who, {"sources", "drafts", "publish"})
-        with request.app.state.db.transaction(who.organization_id) as s:
+        with request.app.state.db.transaction(who.organization_id, for_update=False) as s:
             return [{**public(r), "data": {k:v for k,v in r.data.items() if k != "storage_key"}} for r in listed(s, Source, who.organization_id)]
 
     @app.get("/api/sources/{source_id}/download")
@@ -404,7 +404,7 @@ def create_app(database=None):
     @app.get("/api/compilations")
     def jobs(request: Request, who=Depends(identity)):
         require(who, "drafts")
-        with request.app.state.db.transaction(who.organization_id) as s:
+        with request.app.state.db.transaction(who.organization_id, for_update=False) as s:
             return [public(r) for r in listed(s, CompilationJob, who.organization_id)]
 
     async def action_body(request):

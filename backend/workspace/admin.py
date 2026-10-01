@@ -28,7 +28,7 @@ class Administration:
 
     def members(self, identity):
         require(identity, "members")
-        with self.db.transaction(identity.organization_id) as s:
+        with self.db.transaction(identity.organization_id, for_update=False) as s:
             rows = list(s.execute(
                 select(Membership, User.email)
                 .join(User, Membership.user_id == User.id)

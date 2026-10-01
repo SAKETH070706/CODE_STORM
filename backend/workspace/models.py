@@ -163,10 +163,20 @@ class Database:
             url = "postgresql+psycopg://" + url[len("postgresql://"):]
         if not url.startswith("postgresql+psycopg://") and not (testing and url.startswith("sqlite")):
             raise RuntimeError("Set DATABASE_URL to postgresql+psycopg://; runtime SQLite is not supported")
-        connect_args = {"connect_timeout": 10}
+        connect_args = {"connect_timeout": 20}
         if "-pooler" not in url:
-            connect_args["options"] = "-c lock_timeout=3000 -c statement_timeout=10000"
-        self.engine = create_engine(url, pool_pre_ping=True, **({"pool_timeout": 10, "connect_args": connect_args} if url.startswith("postgresql") else {}))
+            connect_args["options"] = "-c lock_timeout=5000 -c statement_timeout=15000"
+        pool_kwargs = {}
+        if url.startswith("postgresql"):
+            pool_kwargs = {
+                "pool_size": 4,
+                "max_overflow": 4,
+                "pool_timeout": 20,
+                "pool_recycle": 300,
+                "pool_pre_ping": True,
+                "connect_args": connect_args
+            }
+        self.engine = create_engine(url, **pool_kwargs)
         self.sessions = sessionmaker(self.engine, expire_on_commit=False)
 
     @contextmanager

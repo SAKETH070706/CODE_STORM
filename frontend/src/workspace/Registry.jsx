@@ -180,7 +180,7 @@ export default function Registry({ registry, members, api, work, can, busy, _set
               label="Business role"
               name="role"
               defaultValue="data_analyst"
-              pattern="[a-z][-a-z0-9_]{1,49}"
+              pattern="[a-z][a-z0-9_-]{1,49}"
               required
             />
             <button disabled={submitting === 'agent'}>

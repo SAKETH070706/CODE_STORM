@@ -161,8 +161,8 @@ cp .env.example .env
 # Run database migrations
 alembic upgrade head
 
-# Start FastAPI development server
-uvicorn api.main:app --reload --port 8000
+# Start FastAPI workspace server (with Enterprise Governor & AI Copilot)
+python -m uvicorn workspace.api:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
 Verify backend health:
