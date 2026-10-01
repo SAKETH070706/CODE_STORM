@@ -23,24 +23,27 @@ class Store:
 
     @contextmanager
     def connection(self, write=False):
-        c = sqlite3.connect(self.path, timeout=2, isolation_level=None)
+        c = sqlite3.connect(self.path, timeout=10.0, isolation_level=None)
         c.row_factory = sqlite3.Row
         try:
             c.execute("PRAGMA foreign_keys=ON")
-            c.execute("PRAGMA busy_timeout=2000")
+            c.execute("PRAGMA busy_timeout=10000")
             c.execute("PRAGMA synchronous=FULL")
             c.execute("BEGIN IMMEDIATE" if write else "BEGIN")
             yield c
             c.commit()
         except BaseException:
-            c.rollback()
+            try:
+                c.rollback()
+            except Exception:
+                pass
             raise
         finally:
             c.close()
 
     def migrate(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        c = sqlite3.connect(self.path, timeout=2)
+        c = sqlite3.connect(self.path, timeout=10.0)
         try:
             c.execute("PRAGMA journal_mode=WAL")
         finally:

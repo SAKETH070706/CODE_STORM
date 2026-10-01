@@ -157,6 +157,10 @@ Index("idx_credentials_agent", Credential.agent_id)
 class Database:
     def __init__(self, url=None, testing=False):
         url = url or os.environ.get("DATABASE_URL", "")
+        if url.startswith("postgres://"):
+            url = "postgresql+psycopg://" + url[len("postgres://"):]
+        elif url.startswith("postgresql://"):
+            url = "postgresql+psycopg://" + url[len("postgresql://"):]
         if not url.startswith("postgresql+psycopg://") and not (testing and url.startswith("sqlite")):
             raise RuntimeError("Set DATABASE_URL to postgresql+psycopg://; runtime SQLite is not supported")
         connect_args = {"connect_timeout": 10}

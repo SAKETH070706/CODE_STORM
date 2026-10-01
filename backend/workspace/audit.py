@@ -12,6 +12,8 @@ def digest(value):
 
 def append(s, org_id, principal_id, event_type, details):
     org = s.scalar(select(Organization).where(Organization.id == org_id).with_for_update())
+    if org is None:
+        raise ValueError(f"Organization '{org_id}' not found for audit append")
     org.audit_sequence += 1
     body = canonical_json({"organization_id": org_id, "sequence": org.audit_sequence, "timestamp": utc(),
                            "principal_id": principal_id, "event_type": event_type, **details})
@@ -39,6 +41,8 @@ def verify(s, org_id, checkpoint=None):
         previous = event.event_hash
         anchors[count] = previous
     org = s.get(Organization, org_id)
+    if org is None:
+        return {"valid": False, "organization_id": org_id, "event_count": count, "error": f"Organization '{org_id}' not found"}
     valid = org.audit_sequence == count and org.audit_head == previous
     if checkpoint:
         valid = valid and checkpoint.get("organization_id") == org_id and anchors.get(checkpoint.get("event_count")) == checkpoint.get("head_hash")

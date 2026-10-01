@@ -40,9 +40,11 @@ def create_app(database=None):
         app.state.compiler = Compiler(db)
         # Recovery must not race a live worker. Dedicated PostgreSQL session owns lease.
         lease = db.engine.connect()
+        has_lock = False
         try:
             if db.engine.dialect.name == "postgresql":
-                if not lease.scalar(text("SELECT pg_try_advisory_lock(718502641)")):
+                has_lock = bool(lease.scalar(text("SELECT pg_try_advisory_lock(718502641)")))
+                if not has_lock:
                     raise RuntimeError("One workspace API process per database is supported")
             with db.transaction() as s:
                 s.execute(select(Organization.id).limit(1))  # migrations required
@@ -61,8 +63,11 @@ def create_app(database=None):
                             app.state.runtime.change(s, Identity("system", org, "system"), action, "OUTCOME_UNKNOWN", executed=None, reason_code="INTERRUPTED")
             yield
         finally:
-            if db.engine.dialect.name == "postgresql":
-                lease.execute(text("SELECT pg_advisory_unlock(718502641)"))
+            if has_lock and db.engine.dialect.name == "postgresql":
+                try:
+                    lease.execute(text("SELECT pg_advisory_unlock(718502641)"))
+                except Exception:
+                    pass
             lease.close()
     app = FastAPI(title="PNG5 Company Governance", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if x.strip() and x.strip() != "*"],
