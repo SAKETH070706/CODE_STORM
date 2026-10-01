@@ -10,6 +10,7 @@ router = APIRouter(tags=["Health & Readiness"])
 
 
 @router.get("/health")
+@router.get("/api/health")
 def health_check():
     """Fast liveness check indicating that the API process is alive."""
     return {
@@ -20,6 +21,7 @@ def health_check():
 
 
 @router.get("/ready")
+@router.get("/api/ready")
 async def readiness_check():
     """
     Readiness check verifying critical infrastructure:

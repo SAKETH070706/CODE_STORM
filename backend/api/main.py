@@ -24,6 +24,7 @@ from core.governor_identity import get_principal, knowledge_admin, identities
 from api.governor import router, governor, store
 from api.routes.chat import router as chat_router
 from api.limits import BodyLimit
+from api.middleware import RequestIDMiddleware
 from core.governor_runtime import process_lease
 
 @asynccontextmanager
@@ -54,12 +55,14 @@ app = FastAPI(
     description="Resilient dual-provider LLM API with Chroma RAG and multimodal extraction."
 )
 
+app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[v.strip() for v in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if v.strip() and v.strip() != "*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Authorization", "Content-Type", "Idempotency-Key"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
 )
 
 class DefaultExtractSchema(BaseModel):

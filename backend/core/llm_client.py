@@ -24,6 +24,7 @@ class LLMResult:
     parsed_json: Optional[Dict[str, Any]] = None
     provider_used: str = ""
     error: Optional[str] = None
+    duration_ms: float = 0.0
 
 def _is_transient_error(err_str: str) -> bool:
     """Returns True if error code or message indicates a temporary capacity/rate issue."""
@@ -99,6 +100,14 @@ def call_llm(
     Retries only on transient errors (429/503/timeout), with capped backoff.
     """
     req_tag = f"[{request_id}] " if request_id else ""
+    call_start = time.monotonic()
+    _LLMResult = globals()["LLMResult"]
+
+    def LLMResult(**kwargs):
+        if "duration_ms" not in kwargs:
+            kwargs["duration_ms"] = round((time.monotonic() - call_start) * 1000, 1)
+        return _LLMResult(**kwargs)
+
     deadline = time.monotonic() + min(max(deadline_seconds, 0.01), 60.0)
     def remaining():
         left = deadline - time.monotonic()
