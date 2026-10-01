@@ -88,3 +88,17 @@ CHROMA_COLLECTION_NAME = "code_storm_knowledge"
 MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
 
+
+def log_startup_diagnostics():
+    """Logs non-sensitive provider and infrastructure readiness summary."""
+    groq_status = "configured" if bool(GROQ_API_KEY) else "unconfigured"
+    gemini_status = "configured" if bool(GEMINI_API_KEY) else "unconfigured"
+    pinecone_status = "configured" if bool(PINECONE_API_KEY) else "unconfigured"
+    db_scheme = DATABASE_URL.split("://")[0] if "://" in DATABASE_URL else "unknown"
+    logger.info(
+        f"Platform Initialization: Groq={groq_status}, Gemini={gemini_status}, "
+        f"Pinecone={pinecone_status}, DatabaseScheme={db_scheme}"
+    )
+
+log_startup_diagnostics()
+

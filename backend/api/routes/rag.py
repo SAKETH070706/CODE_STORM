@@ -80,15 +80,35 @@ async def trigger_rag_reindex(
     db: AsyncSession = Depends(get_db)
 ):
     """Triggers re-indexing of all documents in backend/data/knowledge/ into Pinecone & PostgreSQL."""
+    import glob
+    import hashlib
     doc_repo = DocumentRepository(db)
-    result = await index_knowledge_folder(
-        folder_path=str(KNOWLEDGE_DIR),
-        doc_repo=doc_repo
-    )
+    total_chunks = index_knowledge_folder(str(KNOWLEDGE_DIR))
+
+    files = glob.glob(str(KNOWLEDGE_DIR / "*.md")) + glob.glob(str(KNOWLEDGE_DIR / "*.txt"))
+    docs_processed = 0
+    for fpath in files:
+        try:
+            p = Path(fpath)
+            content = p.read_text(encoding="utf-8")
+            h = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            d_id = hashlib.md5(p.name.encode("utf-8")).hexdigest()[:12]
+            await doc_repo.create_or_update(
+                name=p.name,
+                content_hash=h,
+                chunk_count=max(1, len(content) // 500),
+                file_size=len(content.encode("utf-8")),
+                mime_type="text/markdown" if p.suffix == ".md" else "text/plain",
+                doc_id=d_id
+            )
+            docs_processed += 1
+        except Exception:
+            pass
+
     return {
         "status": "success",
-        "documents_processed": result["documents_processed"],
-        "chunks_ingested": result["total_chunks"]
+        "documents_processed": docs_processed,
+        "chunks_ingested": total_chunks
     }
 
 
@@ -125,6 +145,7 @@ async def upload_document(
     Uploads a new document (.txt, .md), extracts text, indexes vectors to Pinecone,
     and records metadata in PostgreSQL.
     """
+    import hashlib
     raw_name = Path(file.filename or "uploaded_document.txt").name
     clean_name = raw_name.lstrip(".")
     if not clean_name:
@@ -152,12 +173,23 @@ async def upload_document(
     local_path = KNOWLEDGE_DIR / sanitized_name
     local_path.write_text(text_content, encoding="utf-8")
 
+    doc_id = hashlib.md5(sanitized_name.encode("utf-8")).hexdigest()[:12]
+    content_hash = hashlib.sha256(text_content.encode("utf-8")).hexdigest()
+
+    chunk_count = index_document(
+        document_id=doc_id,
+        filename=sanitized_name,
+        content=text_content
+    )
+
     doc_repo = DocumentRepository(db)
-    doc_id, chunk_count = await index_document(
+    await doc_repo.create_or_update(
         name=sanitized_name,
-        content=text_content,
+        content_hash=content_hash,
+        chunk_count=chunk_count,
+        file_size=len(content_bytes),
         mime_type=file.content_type or "text/plain",
-        doc_repo=doc_repo
+        doc_id=doc_id
     )
 
     return {
@@ -176,7 +208,8 @@ async def delete_document_endpoint(
 ):
     """Deletes document metadata from PostgreSQL and vectors from Pinecone."""
     doc_repo = DocumentRepository(db)
-    success = await delete_document(doc_id=doc_id, doc_repo=doc_repo)
-    if not success:
+    db_del = await doc_repo.delete_by_id(doc_id)
+    vec_del = delete_document(doc_id)
+    if not db_del and not vec_del:
         raise HTTPException(status_code=404, detail="Document not found or could not be deleted.")
     return {"status": "success", "message": f"Document '{doc_id}' and all associated vectors deleted."}

@@ -58,7 +58,7 @@ app = FastAPI(
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[v.strip() for v in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if v.strip() and v.strip() != "*"],
+    allow_origins=[v.strip().rstrip("/") for v in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if v.strip() and v.strip() != "*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID"],
@@ -80,6 +80,7 @@ class ExtractResponse(BaseModel):
     error: Optional[str] = None
 
 @app.get("/health")
+@app.get("/api/health")
 def health_check():
     return {"status": "ok", "service": "code_storm_backend"}
 
@@ -128,6 +129,7 @@ app.include_router(chat_router)
 app.add_middleware(BodyLimit)
 
 @app.get("/ready")
+@app.get("/api/ready")
 def readiness():
     try:
         identities()

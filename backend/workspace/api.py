@@ -205,10 +205,12 @@ def create_app(database=None):
             return [{"id": r.id, "label": "Legacy SQLite audit stream; original event bytes and hashes", "import_digest": r.import_digest, "event_count": len(r.events), "events": r.events[-limit:]} for r in streams]
 
     @app.get("/health")
+    @app.get("/api/health")
     def health():
         return {"status": "ok", "mode": "workspace", "delivery_mode": "simulated"}
 
     @app.get("/ready")
+    @app.get("/api/ready")
     def ready(request: Request):
         with request.app.state.db.transaction() as s:
             s.execute(select(Organization.id).limit(1))
