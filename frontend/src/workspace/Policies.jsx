@@ -247,9 +247,9 @@ export default function Policies({
               {source ? (
                 <>
                   <p>
-                    {source.name} · revision {source.data.revision}
+                    {source.name} · revision {source.data?.revision || 1}
                   </p>
-                  {source.data.segments.map(s => (
+                  {(source.data?.segments || []).map(s => (
                     <blockquote key={s.index}>
                       <small>{s.reference}</small>
                       <p>{s.text}</p>
@@ -328,7 +328,7 @@ export default function Policies({
             )}
           </div>
           <h3>Diff against active policy</h3>
-          {diffRules(active?.data.rules, rules).map(d => (
+          {diffRules(active?.data?.rules || [], rules).map(d => (
             <details key={d.id}>
               <summary>
                 {d.status}: {d.id}

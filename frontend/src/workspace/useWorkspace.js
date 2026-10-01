@@ -81,7 +81,7 @@ export default function useWorkspace() {
     catch(e){if(lifecycle.current.alive&&epoch===lifecycle.current.epoch&&!isCancelled(e)){if(e.status===401)report(e);else setRefreshError(describeError(e));}}
   },[refresh,report]);
   useEffect(()=>{const state=lifecycle.current;state.alive=true;return()=>{state.alive=false;state.epoch++;state.read?.controller.abort();state.write?.abort();state.read=null;state.write=null;state.locked=false;};},[]);
-  useEffect(()=>{let stopped=false,timer;async function poll(){await refreshNow();if(!stopped)timer=setTimeout(poll,12000);}if(token)poll();return()=>{stopped=true;clearTimeout(timer);};},[token,refreshNow]);
+  useEffect(()=>{let stopped=false,timer;async function poll(){await refreshNow();if(!stopped)timer=setTimeout(poll,30000);}if(token)poll();return()=>{stopped=true;clearTimeout(timer);};},[token,refreshNow]);
   async function work(fn,message='Saved'){
     const state=lifecycle.current;if(state.locked)return {ok:false};
     state.locked=true;const epoch=state.epoch,controller=new AbortController();state.write=controller;
