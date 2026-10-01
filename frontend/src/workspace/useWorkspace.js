@@ -12,11 +12,14 @@ export default function useWorkspace() {
   const timers=useRef(new Map()),toastSeq=useRef(0);
   const dismissToast=useCallback(id=>{clearTimeout(timers.current.get(id));timers.current.delete(id);setToasts(old=>old.filter(t=>t.id!==id));},[]);
   const toast=useCallback((type,message,{sticky=false,action=null}={})=>{
-    const id=++toastSeq.current;
-    // Errors stay longer than confirmations so long messages can be read.
-    setToasts(old=>[...old.slice(-3),{id,type,message,action}]);
-    if(!sticky)timers.current.set(id,setTimeout(()=>dismissToast(id),type==='error'?8000:4000));
-    return id;
+    let createdId = null;
+    setToasts(old=>{
+      if(sticky && old.some(t => t.message === message)) return old;
+      createdId = ++toastSeq.current;
+      if(!sticky)timers.current.set(createdId,setTimeout(()=>dismissToast(createdId),type==='error'?8000:4000));
+      return [...old.slice(-3),{id:createdId,type,message,action}];
+    });
+    return createdId;
   },[dismissToast]);
   const [refreshError,setRefreshError]=useState('');
   const lifecycle=useRef({epoch:0,locked:false,read:null,write:null,alive:true});

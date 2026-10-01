@@ -161,6 +161,52 @@ class Governor:
                 response["review"] = dict(approval) if approval else None
             return response
 
+    def list_reviews(self, principal, limit: int = 50):
+        require(principal, "review")
+        now_ts = time.time()
+        with self.store.connection(False) as c:
+            candidates = c.execute(
+                "SELECT a.request_id, a.state, g.expires_at "
+                "FROM actions a JOIN governed_actions g USING(request_id) "
+                "WHERE a.state='REVIEW_REQUIRED' AND g.evaluation_only=0 "
+                "ORDER BY g.created_at LIMIT ?",
+                (limit,)
+            ).fetchall()
+
+        expired_ids = [r["request_id"] for r in candidates if now_ts >= r["expires_at"]]
+        if expired_ids:
+            with self.store.connection(True) as c:
+                for rid in expired_ids:
+                    row = self.store.fetch(c, rid)
+                    if row and row["state"] in ("REVIEW_REQUIRED", "APPROVED", "AUTHORIZED") and time.time() >= row["expires_at"]:
+                        self._transition(c, row, "EXPIRED", decision="BLOCK", reason_code="APPROVAL_EXPIRED")
+
+        results = []
+        with self.store.connection(False) as c:
+            rows = c.execute(
+                "SELECT a.request_id, a.state, a.response_json, g.action_json, g.principal_id, g.action_digest, g.created_at, g.expires_at "
+                "FROM actions a JOIN governed_actions g USING(request_id) "
+                "WHERE a.state='REVIEW_REQUIRED' AND g.evaluation_only=0 AND g.expires_at > ? "
+                "ORDER BY g.created_at LIMIT ?",
+                (now_ts, limit)
+            ).fetchall()
+            for row in rows:
+                rid = row["request_id"]
+                resp = json.loads(row["response_json"])
+                raw = json.loads(row["action_json"])
+                args = raw.get("arguments", {})
+                resp.update(
+                    principal_id=row["principal_id"], action_digest=row["action_digest"], created_at=row["created_at"], expires_at=row["expires_at"],
+                    task=raw.get("task_id"), tool=raw.get("tool"), resource=raw.get("resource"),
+                    arguments={k: v for k, v in args.items() if k in {"limit", "format", "artifact_id", "source_artifact_id", "report_id"}}
+                )
+                if "recipient" in args:
+                    resp["arguments"]["recipient"] = "[allowlisted destination]"
+                approval = c.execute("SELECT reviewer_id,decision,comment,decided_at FROM approvals WHERE request_id=?", (rid,)).fetchone()
+                resp["review"] = dict(approval) if approval else None
+                results.append(resp)
+        return results
+
     def review(self, rid, reviewer, decision, comment=""):
         require(reviewer, "review")
         if decision not in {"APPROVED", "REJECTED"} or not isinstance(comment, str) or len(comment) > 500:

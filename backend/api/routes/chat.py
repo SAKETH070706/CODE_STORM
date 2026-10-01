@@ -8,6 +8,7 @@ from db.repositories import ConversationRepository
 from core.llm_client import call_llm
 from core.rag import retrieve_context, Chunk
 from core.safety_scaffold import scan_for_flags, sanitize_context_for_rag
+from config import logger
 
 router = APIRouter(prefix="/api", tags=["Chat & RAG"])
 
@@ -132,8 +133,9 @@ async def process_user_query(
             sources=[s.model_dump() for s in grounded_list]
         )
     except Exception as db_err:
-        # Non-fatal error: conversation persistence issue should not break user response
-        pass
+        logger.error(f"Failed to persist chat message to database: {db_err}", exc_info=True)
+        if not req.conversation_id:
+            conv_id = None
 
     return QueryResponse(
         status="ok",

@@ -1,4 +1,4 @@
-﻿"""Semantic recommendations never replace deterministic authorization."""
+"""Semantic recommendations never replace deterministic authorization."""
 import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from typing import Literal

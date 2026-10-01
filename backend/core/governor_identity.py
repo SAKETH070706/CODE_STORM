@@ -1,6 +1,8 @@
 """Demo identity boundary. Tokens are never stored in governance records."""
+from __future__ import annotations
 import os
 import secrets
+from typing import Optional
 from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException
@@ -35,7 +37,7 @@ def identities():
 bearer = HTTPBearer(auto_error=False)
 
 
-def get_principal(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
+def get_principal(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer)):
     if credentials is None:
         raise HTTPException(401, "Bearer token required", headers={"WWW-Authenticate": "Bearer"})
     matched = None

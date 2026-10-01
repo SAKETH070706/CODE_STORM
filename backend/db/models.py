@@ -107,8 +107,8 @@ class AuditEvent(Base):
     decision: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # ALLOW, BLOCK, ERROR
     reason_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     details: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True, nullable=False)
-
-
 Index("idx_document_name_hash", Document.name, Document.content_hash)
+Index("idx_document_created", Document.created_at.desc())
 Index("idx_message_conv_created", Message.conversation_id, Message.created_at)
+Index("idx_conv_user_updated", Conversation.user_id, Conversation.updated_at.desc())
+Index("idx_extraction_user_created", ExtractionJob.user_id, ExtractionJob.created_at.desc())

@@ -33,7 +33,7 @@ def _is_transient_error(err_str: str) -> bool:
 
 def _clean_and_heal_json(raw_text: str) -> tuple[bool, Optional[Dict[str, Any]], str]:
     """
-    Strips markdown code fences and attempts at most one heuristic repair for truncated braces.
+    Strips markdown code fences and attempts at most one heuristic repair for truncated braces or brackets.
     Fails loud if valid JSON cannot be restored to protect data correctness.
     """
     text = raw_text.strip()
@@ -50,16 +50,34 @@ def _clean_and_heal_json(raw_text: str) -> tuple[bool, Optional[Dict[str, Any]],
         pass
 
     repaired = text.rstrip()
-    if not repaired.endswith("}"):
-        last_brace = repaired.rfind("}")
-        if last_brace != -1:
-            repaired = repaired[:last_brace + 1]
-        else:
-            repaired += "}"
+    if repaired.startswith("["):
+        if not repaired.endswith("]"):
+            last_brace = repaired.rfind("}")
+            if last_brace != -1:
+                repaired = repaired[:last_brace + 1].rstrip().rstrip(",") + "]"
+            else:
+                last_comma = repaired.rfind(",")
+                if last_comma != -1:
+                    repaired = repaired[:last_comma].rstrip() + "]"
+                else:
+                    repaired += "]"
+        try:
+            data = json.loads(repaired)
+            return True, {"data": data} if not isinstance(data, dict) else data, ""
+        except Exception:
+            pass
+    else:
+        if not repaired.endswith("}"):
+            last_brace = repaired.rfind("}")
+            if last_brace != -1:
+                repaired = repaired[:last_brace + 1]
+            else:
+                repaired += "}"
         try:
             data = json.loads(repaired)
             if isinstance(data, dict):
                 return True, data, ""
+            return True, {"data": data}, ""
         except Exception:
             pass
 
@@ -73,12 +91,14 @@ def call_llm(
     max_tokens: int = 1000,
     image_bytes: Optional[bytes] = None,
     mime_type: str = "image/png",
-    deadline_seconds: float = 15.0
+    deadline_seconds: float = 15.0,
+    request_id: Optional[str] = None
 ) -> LLMResult:
     """
     Executes an LLM call across Groq with automatic cascade to Gemini.
     Retries only on transient errors (429/503/timeout), with capped backoff.
     """
+    req_tag = f"[{request_id}] " if request_id else ""
     deadline = time.monotonic() + min(max(deadline_seconds, 0.01), 60.0)
     def remaining():
         left = deadline - time.monotonic()
@@ -94,6 +114,8 @@ def call_llm(
             groq_model_list = GROQ_VISION_MODELS if image_bytes else GROQ_MODELS
 
             for model_id in groq_model_list:
+                if time.monotonic() >= deadline:
+                    return LLMResult(success=False, text="", error="DEADLINE_EXCEEDED")
                 for attempt in range(MAX_RETRIES_PER_MODEL):
                     try:
                         if image_bytes:
@@ -145,17 +167,41 @@ def call_llm(
                             provider_used=f"groq/{model_id}"
                         )
 
+                    except TimeoutError as timeout_err:
+                        logger.warning(f"Groq {model_id} deadline exceeded: {timeout_err}")
+                        return LLMResult(
+                            success=False,
+                            text="",
+                            provider_used=f"groq/{model_id}",
+                            error="DEADLINE_EXCEEDED"
+                        )
                     except Exception as err:
                         err_str = str(err)
+                        if "deadline exhausted" in err_str.lower():
+                            return LLMResult(
+                                success=False,
+                                text="",
+                                provider_used=f"groq/{model_id}",
+                                error="DEADLINE_EXCEEDED"
+                            )
                         if _is_transient_error(err_str) and attempt < (MAX_RETRIES_PER_MODEL - 1):
                             sleep_time = 0.5 * (attempt + 1)
                             logger.warning(f"Groq {model_id} transient error ({err_str[:80]}), retrying in {sleep_time}s...")
-                            time.sleep(min(sleep_time, remaining()))
+                            try:
+                                rem = remaining()
+                            except TimeoutError:
+                                return LLMResult(success=False, text="", error="DEADLINE_EXCEEDED")
+                            time.sleep(min(sleep_time, rem))
                             continue
                         logger.warning(f"Groq {model_id} failed: {err_str[:120]}. Failing to next model.")
                         break
+        except TimeoutError:
+            return LLMResult(success=False, text="", error="DEADLINE_EXCEEDED")
         except Exception as client_err:
             logger.warning(f"Groq client init failed: {client_err}")
+
+    if time.monotonic() >= deadline:
+        return LLMResult(success=False, text="", error="DEADLINE_EXCEEDED")
 
     # 2. Tier 2: Gemini Cascade Fallback
     if GEMINI_API_KEY:
@@ -169,6 +215,8 @@ def call_llm(
             )
 
             for gem_model in GEMINI_MODELS:
+                if time.monotonic() >= deadline:
+                    return LLMResult(success=False, text="", error="DEADLINE_EXCEEDED")
                 for attempt in range(MAX_RETRIES_PER_MODEL):
                     try:
                         contents = []
@@ -218,15 +266,36 @@ def call_llm(
                             provider_used=f"gemini/{gem_model}"
                         )
 
+                    except TimeoutError as timeout_err:
+                        logger.warning(f"Gemini {gem_model} deadline exceeded: {timeout_err}")
+                        return LLMResult(
+                            success=False,
+                            text="",
+                            provider_used=f"gemini/{gem_model}",
+                            error="DEADLINE_EXCEEDED"
+                        )
                     except Exception as err:
                         err_str = str(err)
+                        if "deadline exhausted" in err_str.lower():
+                            return LLMResult(
+                                success=False,
+                                text="",
+                                provider_used=f"gemini/{gem_model}",
+                                error="DEADLINE_EXCEEDED"
+                            )
                         if _is_transient_error(err_str) and attempt < (MAX_RETRIES_PER_MODEL - 1):
                             sleep_time = 0.5 * (attempt + 1)
                             logger.warning(f"Gemini {gem_model} transient error, retrying in {sleep_time}s...")
-                            time.sleep(min(sleep_time, remaining()))
+                            try:
+                                rem = remaining()
+                            except TimeoutError:
+                                return LLMResult(success=False, text="", error="DEADLINE_EXCEEDED")
+                            time.sleep(min(sleep_time, rem))
                             continue
                         logger.warning(f"Gemini {gem_model} failed: {err_str[:120]}. Failing to next model.")
                         break
+        except TimeoutError:
+            return LLMResult(success=False, text="", error="DEADLINE_EXCEEDED")
         except Exception as g_client_err:
             logger.warning(f"Gemini client init failed: {g_client_err}")
 

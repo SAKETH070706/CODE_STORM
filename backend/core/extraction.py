@@ -1,5 +1,5 @@
 import json
-from typing import Type, TypeVar, Optional, Union
+from typing import Type, TypeVar, Optional, Union, Tuple
 from pydantic import BaseModel, ValidationError
 from dataclasses import dataclass
 
@@ -98,3 +98,43 @@ def extract_structured_data(
         success=False,
         error="Extraction retry failed to produce valid schema-compliant JSON."
     )
+
+
+def validate_image_upload(
+    file_bytes: bytes,
+    filename: Optional[str] = None,
+    content_type: Optional[str] = None,
+    max_size_mb: int = 10
+) -> Tuple[bool, str]:
+    """
+    Validates uploaded image file:
+    1. Enforces size limit.
+    2. Validates filename against path traversal.
+    3. Validates MIME type against allowed list.
+    4. Validates binary magic byte signatures (PNG: \x89PNG, JPEG: \xff\xd8, WebP: RIFF...WEBP).
+    """
+    if not file_bytes:
+        return False, "Uploaded file is empty."
+
+    max_bytes = max_size_mb * 1024 * 1024
+    if len(file_bytes) > max_bytes:
+        return False, f"File size exceeds maximum allowed size of {max_size_mb} MB."
+
+    if filename:
+        if ".." in filename or "/" in filename or "\\" in filename:
+            return False, "Invalid filename: path traversal characters detected."
+
+    allowed_types = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
+    if content_type and content_type.lower() not in allowed_types:
+        return False, f"Unsupported content type '{content_type}'. Allowed types: image/png, image/jpeg, image/webp."
+
+    # Validate binary magic headers
+    if file_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        return True, ""
+    if file_bytes.startswith(b"\xff\xd8"):
+        return True, ""
+    if file_bytes.startswith(b"RIFF") and len(file_bytes) >= 12 and file_bytes[8:12] == b"WEBP":
+        return True, ""
+
+    return False, "File content does not match a valid PNG, JPEG, or WebP image signature."
+

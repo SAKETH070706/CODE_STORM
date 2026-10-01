@@ -59,10 +59,13 @@ def normalize_database_url(raw_url: str) -> tuple[str, dict]:
             or "aivencloud.com" in parsed.netloc
         )
         if require_ssl:
-            ssl_ctx = ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-            connect_args["ssl"] = ssl_ctx
+            if "psycopg" in scheme:
+                connect_args["sslmode"] = "require"
+            else:
+                ssl_ctx = ssl.create_default_context()
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
+                connect_args["ssl"] = ssl_ctx
 
     new_query = urlencode(query_params, doseq=True)
     clean_url = urlunparse((scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
@@ -134,6 +137,15 @@ async def check_database_health() -> tuple[bool, str]:
         return False, str(e)
 
 
+async def init_db():
+    """Initializes declarative database tables for copilot / RAG system."""
+    from db.models import Base
+    engine = get_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Initialized copilot database tables.")
+
+
 async def close_database():
     """Graceful shutdown of database pool."""
     global _engine, _session_factory
@@ -142,3 +154,4 @@ async def close_database():
         _engine = None
         _session_factory = None
         logger.info("Closed database engine connection pool.")
+

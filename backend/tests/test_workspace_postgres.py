@@ -1,4 +1,4 @@
-﻿"""PostgreSQL-only locking tests. Requires a dedicated *_test database explicitly configured.
+"""PostgreSQL-only locking tests. Requires a dedicated *_test database explicitly configured.
 Only a generated png5_test_<hex> schema is created and dropped.
 """
 import os

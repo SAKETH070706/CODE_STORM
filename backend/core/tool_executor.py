@@ -1,4 +1,4 @@
-﻿import sqlite3
+import sqlite3
 from contextlib import closing
 from typing import Any
 

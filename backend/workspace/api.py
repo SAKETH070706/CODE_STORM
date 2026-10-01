@@ -1,10 +1,11 @@
 """PostgreSQL workspace API; no schema creation or destructive startup migrations."""
+from __future__ import annotations
 import json
 import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, Form, Query, Header
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,27 +65,50 @@ def create_app(database=None):
                 lease.execute(text("SELECT pg_advisory_unlock(718502641)"))
             lease.close()
     app = FastAPI(title="PNG5 Company Governance", lifespan=lifespan)
-    app.add_middleware(CORSMiddleware, allow_origins=[x for x in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if x and x != "*"],
+    app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if x.strip() and x.strip() != "*"],
                        allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type", "Idempotency-Key"])
     # Separate limit middleware avoids routing new identities through the legacy audit database.
-    @app.middleware("http")
-    async def body_limit(request, call_next):
-        import asyncio
-        cap = 2 * 1024 * 1024 + 65536 if request.url.path == "/api/sources/upload" else 512000
-        data = bytearray()
-        try:
-            async with asyncio.timeout(10):
-                async for chunk in request.stream():
-                    data.extend(chunk)
-                    if len(data) > cap:
-                        return JSONResponse({"detail": "Request too large"}, 413)
-        except TimeoutError:
-            return JSONResponse({"detail": "Request deadline exceeded"}, 408)
-        request._body = bytes(data)
-        response = await call_next(request)
-        response.headers["Cache-Control"] = "no-store"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        return response
+    import asyncio
+    class WorkspaceBodyLimit:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] != "http":
+                return await self.app(scope, receive, send)
+            cap = 2 * 1024 * 1024 + 65536 if scope.get("path") == "/api/sources/upload" else 512000
+            messages, size = [], 0
+            deadline = time.monotonic() + 10
+            while True:
+                try:
+                    message = await asyncio.wait_for(receive(), timeout=max(0.001, deadline - time.monotonic()))
+                except (TimeoutError, asyncio.TimeoutError):
+                    response = JSONResponse({"detail": "Request deadline exceeded"}, status_code=408)
+                    return await response(scope, receive, send)
+                if message["type"] == "http.disconnect":
+                    return
+                size += len(message.get("body", b""))
+                if size > cap:
+                    response = JSONResponse({"detail": "Request too large"}, status_code=413)
+                    return await response(scope, receive, send)
+                messages.append(message)
+                if not message.get("more_body", False):
+                    break
+
+            async def replay():
+                return messages.pop(0) if messages else {"type": "http.request", "body": b"", "more_body": False}
+
+            async def send_wrapper(message):
+                if message["type"] == "http.response.start":
+                    headers = list(message.get("headers", []))
+                    headers.append((b"cache-control", b"no-store"))
+                    headers.append((b"x-content-type-options", b"nosniff"))
+                    message["headers"] = headers
+                await send(message)
+
+            await self.app(scope, replay, send_wrapper)
+
+    app.add_middleware(WorkspaceBodyLimit)
 
     def identity(request: Request, credentials=Depends(bearer)):
         if not credentials:
@@ -312,7 +336,7 @@ def create_app(database=None):
         return {"status": "available", "mode": "simulated delivery" if kind == "simulated_delivery" else "demo connector" if kind.startswith("demo_") else "local protected report storage"}
 
     @app.post("/api/sources/upload")
-    def upload(file: UploadFile = File(...), previous_id: str | None = Form(None), who=Depends(identity), service=Depends(admin)):
+    def upload(file: UploadFile = File(...), previous_id: Optional[str] = Form(None), who=Depends(identity), service=Depends(admin)):
         return service.source(who, file.filename or "source.txt", file.file.read(2 * 1024 * 1024 + 1), previous_id=previous_id or None)
 
     @app.post("/api/sources/url")
@@ -387,7 +411,7 @@ def create_app(database=None):
         return await run_in_threadpool(service.submit, who, await action_body(request), None, True)
 
     @app.post("/api/actions")
-    async def execute(request: Request, who=Depends(identity), service=Depends(runtime), idempotency_key: str | None = Header(None)):
+    async def execute(request: Request, who=Depends(identity), service=Depends(runtime), idempotency_key: Optional[str] = Header(None)):
         return await run_in_threadpool(service.submit, who, await action_body(request), idempotency_key)
 
     @app.post("/api/playground/{agent_id}")
@@ -511,31 +535,31 @@ class WorkspaceSelection(Strict):
     organization_id: str = Field(pattern=r"^[a-f0-9]{32}$")
 class MemberInput(Strict):
     email: str = Field(min_length=3, max_length=200)
-    password: str | None = Field(default=None, min_length=12, max_length=200)
+    password: Optional[str] = Field(default=None, min_length=12, max_length=200)
     permissions: list[str] = Field(max_length=12)
     groups: list[str] = Field(default_factory=list, max_length=20)
 class AgentInput(Named):
-    id: str | None = None
+    id: Optional[str] = None
     role: str = Field(pattern=r"^[a-z][a-z0-9_-]{1,49}$")
 class TaskInput(Named):
-    id: str | None = None
+    id: Optional[str] = None
     description: str = Field(default="", max_length=200)
     roles: list[str] = Field(min_length=1, max_length=20)
     resources: list[str] = Field(default_factory=list, max_length=30)
     agents: list[str] = Field(default_factory=list, max_length=100)
 class ConnectorInput(Named):
-    id: str | None = None
+    id: Optional[str] = None
     kind: Literal["demo_sales", "demo_support", "report_storage", "simulated_delivery"]
     destinations: list[str] = Field(default_factory=list, max_length=20)
 class URLInput(Strict):
     url: str = Field(min_length=10, max_length=2000)
-    previous_id: str | None = None
+    previous_id: Optional[str] = None
 class DraftInput(Named):
-    id: str | None = None
-    expected_revision: int | None = None
+    id: Optional[str] = None
+    expected_revision: Optional[int] = None
     rules: list[dict] = Field(max_length=100)
 class PublishInput(Strict):
-    expected_active_policy_id: str | None
+    expected_active_policy_id: Optional[str] = None
 class CompileInput(Strict):
     source_id: str
     policy_id: str
@@ -549,7 +573,7 @@ class Checkpoint(Strict):
     head_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
 class QueryInput(Strict):
     query: str = Field(min_length=1, max_length=8000)
-    user_context: str | None = Field(default="", max_length=2000)
+    user_context: Optional[str] = Field(default="", max_length=2000)
 
 app = create_app()
 

@@ -1,4 +1,4 @@
-﻿"""Offline, isolated benchmark. Never calls live providers or changes demo state."""
+"""Offline, isolated benchmark. Never calls live providers or changes demo state."""
 import argparse
 import json
 import math

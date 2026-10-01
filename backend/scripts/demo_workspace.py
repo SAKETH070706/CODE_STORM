@@ -1,4 +1,4 @@
-﻿"""Complete deterministic HTTP demo against workspace.api. No cloud calls or real delivery.
+"""Complete deterministic HTTP demo against workspace.api. No cloud calls or real delivery.
 Requires WORKSPACE_ADMIN_EMAIL and WORKSPACE_ADMIN_PASSWORD in the shell.
 Creates a fresh organization and a separate reviewer; never edits existing policy versions.
 """

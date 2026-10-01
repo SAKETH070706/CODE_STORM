@@ -125,3 +125,36 @@ def test_critical_risk_score_calibration():
     }
     score = round(sum(risk_policy.weights[k] * v for k, v in factors.items()), 2)
     assert score >= risk_policy.thresholds["critical"], f"Expected score ({score}) to reach critical ({risk_policy.thresholds['critical']})"
+
+
+def test_chunk_to_dict():
+    from core.rag import Chunk
+    c = Chunk(text="Sample text", source_file="doc.txt", distance=0.15, score=0.85)
+    d = c.to_dict()
+    assert d["text"] == "Sample text"
+    assert d["source_file"] == "doc.txt"
+    assert d["score"] == 0.85
+
+
+def test_chat_routes_mounted_on_main():
+    from fastapi.testclient import TestClient
+    from unittest.mock import patch, MagicMock
+    import api.main as main
+    from core.llm_client import LLMResult
+
+    with patch("api.routes.chat.call_llm") as mock_llm:
+        mock_llm.return_value = LLMResult(success=True, text="Copilot answer", provider_used="mock")
+        with TestClient(main.app) as c:
+            # Test chat endpoint
+            res = c.post("/api/chat", json={"query": "How do I secure the agent?"})
+            assert res.status_code == 200
+            data = res.json()
+            assert data["status"] == "ok"
+            assert data["response"] == "Copilot answer"
+            conv_id = data.get("conversation_id")
+
+            # Test list conversations
+            res_convs = c.get("/api/conversations")
+            assert res_convs.status_code == 200
+            assert "conversations" in res_convs.json()
+

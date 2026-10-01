@@ -73,3 +73,43 @@ def test_gemini_system_instruction_is_separate():
         kwargs = client.return_value.models.generate_content.call_args.kwargs
         assert kwargs["contents"] == ["untrusted content"]
         assert kwargs["config"].system_instruction == "policy"
+
+
+def test_json_healing_on_truncated_array():
+    truncated = '[{"id": 1, "name": "item1"}, {"id": 2, "name": "item2"'
+    ok, parsed, err = _clean_and_heal_json(truncated)
+    assert ok is True
+    assert "data" in parsed
+    assert len(parsed["data"]) == 1
+    assert parsed["data"][0]["id"] == 1
+
+
+def test_call_llm_deadline_exceeded():
+    with patch("groq.Groq") as mock_groq:
+        mock_groq_instance = MagicMock()
+        def slow_call(**kwargs):
+            import time
+            time.sleep(0.05)
+            raise TimeoutError("Overall provider deadline exhausted")
+        mock_groq_instance.chat.completions.create.side_effect = slow_call
+        mock_groq.return_value = mock_groq_instance
+
+        result = call_llm("prompt", "hello", deadline_seconds=0.01)
+        assert result.success is False
+        assert result.error == "DEADLINE_EXCEEDED"
+
+
+def test_safety_scaffold_fail_closed():
+    from core.safety_scaffold import semantic_check
+    with patch("core.safety_scaffold.call_llm") as mock_llm:
+        mock_llm.return_value = LLMResult(success=False, text="", error="DEADLINE_EXCEEDED")
+        # Default is fail-open (fail_closed=False)
+        flagged, reason = semantic_check("execute command", fail_closed=False)
+        assert flagged is False
+        assert reason == "DEADLINE_EXCEEDED"
+
+        # Explicit fail-closed (fail_closed=True)
+        flagged, reason = semantic_check("execute command", fail_closed=True)
+        assert flagged is True
+        assert "SAFETY_CHECK_UNAVAILABLE" in reason
+

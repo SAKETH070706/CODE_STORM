@@ -1,4 +1,4 @@
-﻿"""Strict tool schemas and versioned deterministic context assessment."""
+"""Strict tool schemas and versioned deterministic context assessment."""
 import json
 from pathlib import Path
 from typing import Literal

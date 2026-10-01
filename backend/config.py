@@ -48,11 +48,43 @@ GEMINI_MODELS = _env_list("GEMINI_MODELS", [])
 # ---------------------------------------------------------------------------
 HTTP_TIMEOUT_SECONDS = float(os.getenv("HTTP_TIMEOUT_SECONDS", "25.0"))
 MAX_RETRIES_PER_MODEL = int(os.getenv("MAX_RETRIES_PER_MODEL", "2"))
+LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "30.0"))
+LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "1"))
+
+PRIMARY_LLM_PROVIDER = os.getenv("PRIMARY_LLM_PROVIDER", "groq")
+PRIMARY_LLM_MODEL = os.getenv("PRIMARY_LLM_MODEL", "llama-3.3-70b-versatile")
+FALLBACK_LLM_PROVIDER = os.getenv("FALLBACK_LLM_PROVIDER", "gemini")
+FALLBACK_LLM_MODEL = os.getenv("FALLBACK_LLM_MODEL", "gemini-2.5-flash")
 
 # ---------------------------------------------------------------------------
-# Local Storage & Vector Database
+# Database Settings (Aiven PostgreSQL or local SQLite fallback)
 # ---------------------------------------------------------------------------
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///code_storm.db")
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+DB_POOL_TIMEOUT = float(os.getenv("DB_POOL_TIMEOUT", "30.0"))
+DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+DB_SSL_MODE = os.getenv("DB_SSL_MODE", "require")
+
+# ---------------------------------------------------------------------------
+# Vector Database & Embeddings (Pinecone / Chroma)
+# ---------------------------------------------------------------------------
+PINECONE_API_KEY = _clean_api_key(os.getenv("PINECONE_API_KEY", ""))
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "code-storm")
+PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "default")
+PINECONE_HOST = os.getenv("PINECONE_HOST", "")
+PINECONE_DIMENSION = int(os.getenv("PINECONE_DIMENSION", "1024"))
+PINECONE_METRIC = os.getenv("PINECONE_METRIC", "cosine")
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "pinecone")
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "multilingual-e5-large")
+
 CHROMA_DIR = BASE_DIR / "chroma_store"
 KNOWLEDGE_DIR = BASE_DIR / "data" / "knowledge"
 CHROMA_COLLECTION_NAME = "code_storm_knowledge"
-EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
+
+# ---------------------------------------------------------------------------
+# Security & Uploads
+# ---------------------------------------------------------------------------
+MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+

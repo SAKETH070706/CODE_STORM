@@ -48,7 +48,8 @@ def scan_for_flags(text: str, patterns: List[str] = None) -> Tuple[bool, str]:
 
 def semantic_check(
     text: str,
-    classification_prompt: str = DEFAULT_CLASSIFICATION_PROMPT
+    classification_prompt: str = DEFAULT_CLASSIFICATION_PROMPT,
+    fail_closed: bool = False
 ) -> Tuple[bool, str]:
     """Tier 1 Semantic Safety Check via LLM JSON mode."""
     if not text or len(text.strip()) < 3:
@@ -63,10 +64,10 @@ def semantic_check(
     )
 
     if not res.success:
-        if res.error == "SERVICE_UNAVAILABLE":
-            logger.critical("Tier 1 safety check unreachable: SERVICE_UNAVAILABLE")
-            return False, "SERVICE_UNAVAILABLE"
-        return False, f"SAFETY_CHECK_ERROR: {res.error}"
+        logger.critical(f"Tier 1 safety check unreachable or failed: {res.error}")
+        if fail_closed:
+            return True, f"SAFETY_CHECK_UNAVAILABLE: {res.error}"
+        return False, res.error or "SERVICE_UNAVAILABLE"
 
     parsed = res.parsed_json or {}
     is_flagged = bool(parsed.get("is_flagged", False))
@@ -74,3 +75,26 @@ def semantic_check(
     if is_flagged:
         logger.warning(f"Tier 1 Semantic Safety Flag triggered: {reason}")
     return is_flagged, reason
+
+
+def sanitize_context_for_rag(text: str) -> str:
+    """
+    Sanitizes retrieved reference text before passing it to LLM prompts:
+    - Neutralizes known prompt injection and system override sequences.
+    - Strips executable code delimiters from untrusted passages.
+    """
+    if not text:
+        return ""
+
+    sanitized = text
+    # Filter common injection phrases
+    injection_patterns = [
+        r"(?i)\b(ignore|disregard)\s+(all\s+)?(previous|above|prior)\s+(instructions?|guidelines?|rules?)\b",
+        r"(?i)\b(system\s+prompt\s+(override|reveal|leak))\b",
+        r"(?i)\b(you\s+are\s+now\s+(in\s+developer\s+mode|dan))\b",
+    ]
+    for pattern in injection_patterns:
+        sanitized = re.sub(pattern, "[FILTERED_INSTRUCTION]", sanitized)
+
+    return sanitized.strip()
+

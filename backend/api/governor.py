@@ -1,6 +1,8 @@
-﻿"""Authenticated HTTP boundary. Blocking SQLite/adapter work uses FastAPI's pool."""
+"""Authenticated HTTP boundary. Blocking SQLite/adapter work uses FastAPI's pool."""
+from __future__ import annotations
 import json
 from pathlib import Path
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, Header
 from pydantic import Field
 from starlette.concurrency import run_in_threadpool
@@ -51,7 +53,7 @@ async def authorize(request: Request, principal=Depends(get_principal)):
 
 
 @router.post("/actions")
-async def execute(request: Request, principal=Depends(get_principal), idempotency_key: str | None = Header(default=None)):
+async def execute(request: Request, principal=Depends(get_principal), idempotency_key: Optional[str] = Header(default=None)):
     return await run_in_threadpool(governor.submit, await body(request), principal, idempotency_key)
 
 
@@ -68,10 +70,7 @@ def cancel(request_id: str, principal=Depends(get_principal)):
 @router.get("/reviews")
 def reviews(principal=Depends(get_principal), limit: int = Query(50, ge=1, le=100)):
     require(principal, "review")
-    with store.connection() as c:
-        ids = [r[0] for r in c.execute("SELECT a.request_id FROM actions a JOIN governed_actions g USING(request_id) WHERE a.state='REVIEW_REQUIRED' AND g.evaluation_only=0 ORDER BY g.created_at LIMIT ?", (limit,))]
-    details = [governor.status(rid, principal, True) for rid in ids]
-    return {"reviews": [item for item in details if item["state"] == "REVIEW_REQUIRED"]}
+    return {"reviews": governor.list_reviews(principal, limit)}
 
 
 @router.get("/reviews/{request_id}")

@@ -1,8 +1,10 @@
 """Local account and agent authentication; no public privileged signup."""
+from __future__ import annotations
 import hashlib
 import os
 import secrets
 import time
+from typing import Optional
 from dataclasses import dataclass
 import jwt
 from argon2 import PasswordHasher
@@ -22,7 +24,7 @@ class Identity:
     role: str = ""
     permissions: frozenset = frozenset()
     groups: frozenset = frozenset()
-    credential_id: str | None = None
+    credential_id: Optional[str] = None
     legacy_demo: bool = False
     auth_time: int = 0  # original sign-in time (epoch s); preserved across refreshes
 

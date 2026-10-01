@@ -1,4 +1,4 @@
-﻿"""Functional workspace tests, isolated SQLite through SQLAlchemy (no production fallback).
+"""Functional workspace tests, isolated SQLite through SQLAlchemy (no production fallback).
 PostgreSQL lock/concurrency behavior has a separate explicitly configured test suite.
 """
 import sys

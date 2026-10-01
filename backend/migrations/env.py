@@ -7,9 +7,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config as backend_config  # load backend/.env for operator migration commands
 from workspace.models import Base
 config = context.config
-config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"].replace("%", "%%"))
+db_url = os.getenv("DATABASE_URL") or getattr(backend_config, "DATABASE_URL", "sqlite:///code_storm.db")
+config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 if context.is_offline_mode():
-    context.configure(url=os.environ["DATABASE_URL"], target_metadata=Base.metadata, literal_binds=True)
+    context.configure(url=db_url, target_metadata=Base.metadata, literal_binds=True)
     with context.begin_transaction():
         context.run_migrations()
 else:

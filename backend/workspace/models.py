@@ -1,9 +1,11 @@
 """SQLAlchemy 2 persistence. PostgreSQL in deployment; SQLite only for isolated tests."""
+from __future__ import annotations
 import os
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import uuid4
-from sqlalchemy import String, Integer, Text, JSON, ForeignKey, UniqueConstraint, create_engine, select
+from sqlalchemy import String, Integer, Text, JSON, ForeignKey, UniqueConstraint, Index, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 
@@ -23,7 +25,7 @@ class Organization(Base):
     __tablename__ = "organizations"
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
     name: Mapped[str] = mapped_column(String(100))
-    active_policy_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    active_policy_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     audit_sequence: Mapped[int] = mapped_column(Integer, default=0)
     audit_head: Mapped[str] = mapped_column(String(64), default="0" * 64)
     created_at: Mapped[str] = mapped_column(String(40), default=utc)
@@ -141,6 +143,15 @@ class LegacyStream(Base):
     # Original event strings/hashes/sequence stored without recanonicalization.
     events: Mapped[list] = mapped_column(JSON)
     ownership_manifest: Mapped[dict] = mapped_column(JSON)
+
+
+Index("idx_actions_org_created", Action.organization_id, Action.created_at.desc())
+Index("idx_actions_org_name", Action.organization_id, Action.name)
+Index("idx_artifacts_org_created", Artifact.organization_id, Artifact.created_at.desc())
+Index("idx_policies_org_created", Policy.organization_id, Policy.created_at.desc())
+Index("idx_approvals_org_created", Approval.organization_id, Approval.created_at.desc())
+Index("idx_outbox_org_created", Outbox.organization_id, Outbox.created_at.desc())
+Index("idx_credentials_agent", Credential.agent_id)
 
 
 class Database:

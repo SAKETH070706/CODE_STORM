@@ -1,5 +1,6 @@
 """Bounded policy language; documents and model confidence are never authority."""
-from typing import Literal
+from __future__ import annotations
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class Strict(BaseModel):
@@ -24,7 +25,7 @@ class Rule(Strict):
     tasks: list[str] = Field(min_length=1, max_length=30)
     arguments: Constraints = Field(default_factory=Constraints)
     decision: Literal["ALLOW", "ESCALATE", "BLOCK"]
-    reviewer_group: str | None = Field(default=None, max_length=32)
+    reviewer_group: Optional[str] = Field(default=None, max_length=32)
     source: Citation
     assumptions: list[str] = Field(default_factory=list, max_length=10)
     ambiguity: list[str] = Field(default_factory=list, max_length=10)

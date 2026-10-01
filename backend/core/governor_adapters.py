@@ -1,4 +1,4 @@
-﻿"""Private registry used only by Governor after a durable EXECUTING claim."""
+"""Private registry used only by Governor after a durable EXECUTING claim."""
 import csv
 import hashlib
 import io

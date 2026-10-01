@@ -354,12 +354,18 @@ class Runtime:
             raise HTTPException(404, "Action not found")
         if identity.kind == "human" and not ({"activity", "review", "audit"} & identity.permissions):
             raise HTTPException(403, "Action read permission required")
-        if row.state == "REVIEW_REQUIRED" and time.time() >= row.data["expires_at"]:
-            self.change(s, identity, row, "EXPIRED", decision="BLOCK", reason_code="EXPIRED")
+        resp = dict(row.data.get("response", {}))
+        if row.state == "REVIEW_REQUIRED" and time.time() >= row.data.get("expires_at", 0):
+            resp["state"] = "EXPIRED"
+            resp["decision"] = "BLOCK"
+            resp["reason_code"] = "EXPIRED"
+            tiers = dict(resp.get("tiers", {}))
+            tiers["tier3"] = "EXPIRED"
+            resp["tiers"] = tiers
         artifact_id = row.data["action"].get("arguments", {}).get("artifact_id") or row.data["action"].get("arguments", {}).get("source_artifact_id")
         artifact = s.get(Artifact, artifact_id) if artifact_id else None
         sensitivity = artifact.data.get("sensitivity") if artifact and artifact.organization_id == identity.organization_id else None
-        result = {"artifact_sensitivity": sensitivity, **row.data["response"], "action": row.data["action"], "action_digest": row.data["action_digest"], "agent_id": row.name,
+        result = {"artifact_sensitivity": sensitivity, **resp, "action": row.data["action"], "action_digest": row.data["action_digest"], "agent_id": row.name,
                   "expires_at": row.data["expires_at"], "initiated_by": row.data.get("initiated_by")}
         approval = s.get(Approval, rid)
         if approval and approval.organization_id == identity.organization_id:
@@ -374,10 +380,6 @@ class Runtime:
         if identity.kind == "human" and not ({"activity", "review", "audit"} & identity.permissions):
             raise HTTPException(403, "Action read permission required")
         now = time.time()
-        for row in rows:
-            if row.state == "REVIEW_REQUIRED" and now >= row.data.get("expires_at", 0):
-                self.change(s, identity, row, "EXPIRED", decision="BLOCK", reason_code="EXPIRED")
-
         rids = [r.id for r in rows]
         artifact_ids = []
         for r in rows:
@@ -402,9 +404,17 @@ class Runtime:
             aid = args.get("artifact_id") or args.get("source_artifact_id")
             art = artifacts_by_id.get(aid)
             sensitivity = art.data.get("sensitivity") if art and art.organization_id == identity.organization_id else None
+            resp = dict(row.data.get("response", {}))
+            if row.state == "REVIEW_REQUIRED" and now >= row.data.get("expires_at", 0):
+                resp["state"] = "EXPIRED"
+                resp["decision"] = "BLOCK"
+                resp["reason_code"] = "EXPIRED"
+                tiers = dict(resp.get("tiers", {}))
+                tiers["tier3"] = "EXPIRED"
+                resp["tiers"] = tiers
             item = {
                 "artifact_sensitivity": sensitivity,
-                **row.data.get("response", {}),
+                **resp,
                 "action": row.data.get("action"),
                 "action_digest": row.data.get("action_digest"),
                 "agent_id": row.name,

@@ -114,8 +114,14 @@ def fetch(url, hosts):
 def _resource_limit():
     if os.name != "nt":
         import resource
-        resource.setrlimit(resource.RLIMIT_AS, (384 * 1024 * 1024,) * 2)
-        resource.setrlimit(resource.RLIMIT_CPU, (8, 8))
+        try:
+            resource.setrlimit(resource.RLIMIT_AS, (384 * 1024 * 1024,) * 2)
+        except (ValueError, OSError):
+            pass
+        try:
+            resource.setrlimit(resource.RLIMIT_CPU, (8, 8))
+        except (ValueError, OSError):
+            pass
     # Windows runs this worker inside a Job Object with a process memory limit.
     else:
         import ctypes

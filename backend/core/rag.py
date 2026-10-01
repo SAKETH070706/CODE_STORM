@@ -3,11 +3,15 @@ import glob
 import hashlib
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 
-import chromadb
-from chromadb.utils import embedding_functions
+try:
+    import chromadb
+    from chromadb.utils import embedding_functions
+except ImportError:
+    chromadb = None
+    embedding_functions = None
 
 from config import (
     CHROMA_DIR,
@@ -15,12 +19,29 @@ from config import (
     EMBEDDING_MODEL_NAME,
     logger
 )
+from integrations.embeddings import embedding_service
+from integrations.pinecone_client import pinecone_service
 
 @dataclass
 class Chunk:
     text: str
     source_file: str
-    distance: float
+    distance: float = 0.0
+    document_id: str = ""
+    chunk_id: str = ""
+    section: str = "General"
+    score: float = 1.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "text": self.text,
+            "source_file": self.source_file,
+            "distance": self.distance,
+            "document_id": self.document_id,
+            "chunk_id": self.chunk_id,
+            "section": self.section,
+            "score": self.score
+        }
 
 def get_chroma_collection():
     """Initializes and returns the persistent Chroma collection with local embeddings."""
@@ -139,6 +160,139 @@ def retrieve(query: str, k: int = 4, max_distance: float = 0.70) -> List[Chunk]:
             results.append(Chunk(
                 text=doc,
                 source_file=meta.get("source_file", "unknown"),
-                distance=round(float(dist), 4)
+                distance=round(float(dist), 4),
+                document_id=meta.get("document_id", ""),
+                chunk_id=meta.get("chunk_id", ""),
+                section=meta.get("section", "General"),
+                score=round(1.0 - float(dist), 4)
             ))
     return results
+
+
+def retrieve_context(
+    query: str,
+    top_k: int = 4,
+    min_score: float = 0.05,
+    filter_dict: Optional[Dict[str, Any]] = None
+) -> List[Chunk]:
+    """
+    Unified high-level retrieval pipeline:
+    1. Embeds query using EmbeddingService (Pinecone Inference, Gemini, or deterministic fallback).
+    2. Queries Pinecone vector store (or in-memory mock if unconfigured).
+    3. If vector store is empty, falls back to local Chroma retrieval.
+    4. Returns deduplicated and scored Chunk instances.
+    """
+    clean_q = query.strip()
+    if not clean_q:
+        return []
+
+    # 1. Query Pinecone vector store
+    try:
+        q_vec = embedding_service.embed_query(clean_q)
+        matches = pinecone_service.query(
+            query_vector=q_vec,
+            top_k=top_k,
+            filter_dict=filter_dict,
+            min_score=min_score
+        )
+        if matches:
+            chunks = []
+            for m in matches:
+                meta = m.get("metadata", {})
+                chunks.append(Chunk(
+                    text=meta.get("text", ""),
+                    source_file=meta.get("source_file", "knowledge_base"),
+                    distance=round(1.0 - m.get("score", 0.0), 4),
+                    document_id=meta.get("document_id", ""),
+                    chunk_id=m.get("id", ""),
+                    section=meta.get("section", "General"),
+                    score=m.get("score", 0.0)
+                ))
+            return chunks
+    except Exception as e:
+        logger.warning(f"Vector search retrieval failed ({e}), falling back to Chroma...")
+
+    # 2. Fallback to Chroma
+    chroma_chunks = retrieve(clean_q, k=top_k)
+    return [
+        Chunk(
+            text=c.text,
+            source_file=c.source_file,
+            distance=c.distance,
+            document_id=f"doc_{hashlib.md5(c.source_file.encode()).hexdigest()[:8]}",
+            chunk_id=f"chk_{hashlib.md5(c.text.encode()).hexdigest()[:8]}",
+            section="General",
+            score=round(max(0.0, 1.0 - c.distance), 4)
+        )
+        for c in chroma_chunks
+    ]
+
+
+def index_document(document_id: str, filename: str, content: str) -> int:
+    """
+    Chunks, embeds, and indexes a single document into the active vector store.
+    Returns the count of chunks indexed.
+    """
+    if not content or not content.strip():
+        return 0
+
+    raw_chunks = _chunk_text(content, filename)
+    if not raw_chunks:
+        return 0
+
+    texts = [c["text"] for c in raw_chunks]
+    vectors = embedding_service.embed_documents(texts)
+
+    payloads = []
+    for i, (chunk, vec) in enumerate(zip(raw_chunks, vectors)):
+        chunk_id = f"doc_{document_id}_{i}"
+        payloads.append({
+            "id": chunk_id,
+            "values": vec,
+            "metadata": {
+                "document_id": document_id,
+                "source_file": filename,
+                "chunk_index": i,
+                "section": "General",
+                "text": chunk["text"]
+            }
+        })
+
+    pinecone_service.upsert_vectors(payloads)
+    logger.info(f"Indexed {len(payloads)} chunks for document '{filename}' (ID: {document_id}).")
+    return len(payloads)
+
+
+def delete_document(document_id: str) -> bool:
+    """Purges all vector embeddings for a given document."""
+    return pinecone_service.delete_by_document(document_id)
+
+
+def index_knowledge_folder(folder_path: str) -> int:
+    """Ingests all files from folder into the active vector store."""
+    folder = Path(folder_path)
+    if not folder.exists() or not folder.is_dir():
+        logger.warning(f"Knowledge folder does not exist: {folder_path}")
+        return 0
+
+    files = glob.glob(str(folder / "*.md")) + glob.glob(str(folder / "*.txt"))
+    total_indexed = 0
+    for fpath in files:
+        try:
+            with open(fpath, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content:
+                    doc_id = hashlib.md5(Path(fpath).name.encode()).hexdigest()[:12]
+                    count = index_document(doc_id, Path(fpath).name, content)
+                    total_indexed += count
+        except Exception as e:
+            logger.warning(f"Failed to index knowledge file {fpath}: {e}")
+
+    # Also sync with local Chroma if available
+    try:
+        ingest_knowledge(folder_path)
+    except Exception:
+        pass
+
+    return total_indexed
+

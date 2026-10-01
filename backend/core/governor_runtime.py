@@ -1,4 +1,5 @@
-﻿"""Exclusive process lease: recovery is unsafe while another worker dispatches."""
+"""Exclusive process lease: recovery is unsafe while another worker dispatches."""
+from __future__ import annotations
 from contextlib import contextmanager
 import os
 

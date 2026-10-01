@@ -1,7 +1,9 @@
 """Frozen schema metadata for revision 0001; never edit after release."""
+from __future__ import annotations
 import os
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import uuid4
 from sqlalchemy import String, Integer, Text, JSON, ForeignKey, UniqueConstraint, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
@@ -23,7 +25,7 @@ class Organization(Base):
     __tablename__ = "organizations"
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
     name: Mapped[str] = mapped_column(String(100))
-    active_policy_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    active_policy_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     audit_sequence: Mapped[int] = mapped_column(Integer, default=0)
     audit_head: Mapped[str] = mapped_column(String(64), default="0" * 64)
     created_at: Mapped[str] = mapped_column(String(40), default=utc)

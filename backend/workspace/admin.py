@@ -29,8 +29,12 @@ class Administration:
     def members(self, identity):
         require(identity, "members")
         with self.db.transaction(identity.organization_id) as s:
-            rows = list(s.scalars(select(Membership).where(Membership.organization_id == identity.organization_id)))
-            return [{"id": m.id, "user_id": m.user_id, "email": s.get(User, m.user_id).email, "permissions": m.permissions, "groups": m.groups, "active": m.active} for m in rows]
+            rows = list(s.execute(
+                select(Membership, User.email)
+                .join(User, Membership.user_id == User.id)
+                .where(Membership.organization_id == identity.organization_id)
+            ).all())
+            return [{"id": m.id, "user_id": m.user_id, "email": email, "permissions": m.permissions, "groups": m.groups, "active": m.active} for m, email in rows]
 
     def add_member(self, identity, email, password, permissions, groups):
         require(identity, "members")

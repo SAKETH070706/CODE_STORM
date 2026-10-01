@@ -1,4 +1,4 @@
-﻿"""Bound streamed request bodies, including chunked uploads, before multipart parsing."""
+"""Bound streamed request bodies, including chunked uploads, before multipart parsing."""
 import asyncio
 import time
 from starlette.responses import JSONResponse
@@ -16,7 +16,7 @@ class BodyLimit:
         while True:
             try:
                 message = await asyncio.wait_for(receive(), max(.001, deadline - time.monotonic()))
-            except TimeoutError:
+            except (TimeoutError, asyncio.TimeoutError):
                 from starlette.requests import Request
                 from api.main import rejected_request
                 response = await rejected_request(Request(scope), 408, "Request body deadline exceeded")
@@ -33,7 +33,7 @@ class BodyLimit:
             if not message.get("more_body", False):
                 break
         async def replay():
-            return messages.pop(0) if messages else await receive()
+            return messages.pop(0) if messages else {"type": "http.request", "body": b"", "more_body": False}
         await self.app(scope, replay, send)
 
 

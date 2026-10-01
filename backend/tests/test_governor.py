@@ -1,4 +1,4 @@
-﻿"""Offline governor tests; no providers, embeddings or persistent demo files."""
+"""Offline governor tests; no providers, embeddings or persistent demo files."""
 import json
 import sqlite3
 import sys
