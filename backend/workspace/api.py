@@ -253,7 +253,9 @@ def create_app(database=None):
             member = s.scalar(select(Membership).where(Membership.user_id == who.principal_id, Membership.organization_id == payload.organization_id, Membership.active.is_(True)))
             if not member:
                 raise HTTPException(403, "Workspace membership required")
-        return {"access_token": token_for(who.principal_id, member.organization_id, who.auth_time), "expires_in": TOKEN_SECONDS}
+        session_remaining = max(0, (who.auth_time + MAX_SESSION_SECONDS) - int(time.time()))
+        expires_in = min(TOKEN_SECONDS, session_remaining)
+        return {"access_token": token_for(who.principal_id, member.organization_id, who.auth_time), "expires_in": expires_in}
 
     @app.post("/api/session/refresh")
     def refresh(who=Depends(identity)):
@@ -262,7 +264,9 @@ def create_app(database=None):
         if who.kind != "human" or who.legacy_demo:
             raise HTTPException(403, "Human session required")
         token = token_for(who.principal_id, who.organization_id, who.auth_time)
-        return {"access_token": token, "expires_in": TOKEN_SECONDS, "session_ends_at": who.auth_time + MAX_SESSION_SECONDS}
+        session_remaining = max(0, (who.auth_time + MAX_SESSION_SECONDS) - int(time.time()))
+        expires_in = min(TOKEN_SECONDS, session_remaining)
+        return {"access_token": token, "expires_in": expires_in, "session_ends_at": who.auth_time + MAX_SESSION_SECONDS}
 
     @app.post("/api/workspaces")
     def workspace(payload: Named, who=Depends(identity), service=Depends(admin)):

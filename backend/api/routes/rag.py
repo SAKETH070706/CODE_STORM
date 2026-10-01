@@ -12,6 +12,9 @@ from core.rag import (
     delete_document,
     Chunk
 )
+import re
+from pathlib import Path
+from core.governor_identity import knowledge_admin
 from integrations.pinecone_client import pinecone_service
 from config import KNOWLEDGE_DIR, MAX_UPLOAD_SIZE_MB
 
@@ -72,21 +75,11 @@ def direct_rag_query(req: RagQueryRequest):
 
 @router.post("/api/rag/reindex")
 @router.post("/api/rag/ingest")
-async def trigger_rag_reindex(request: Request, db: AsyncSession = Depends(get_db)):
+async def trigger_rag_reindex(
+    principal: Any = Depends(knowledge_admin),
+    db: AsyncSession = Depends(get_db)
+):
     """Triggers re-indexing of all documents in backend/data/knowledge/ into Pinecone & PostgreSQL."""
-    auth_header = request.headers.get("authorization", "")
-    if auth_header.lower().startswith("bearer "):
-        try:
-            from core.governor_identity import get_principal, knowledge_admin
-            from fastapi.security import HTTPAuthorizationCredentials
-            token = auth_header.split(" ", 1)[1].strip()
-            principal = get_principal(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
-            knowledge_admin(principal)
-        except HTTPException:
-            raise
-        except Exception:
-            pass
-
     doc_repo = DocumentRepository(db)
     result = await index_knowledge_folder(
         folder_path=str(KNOWLEDGE_DIR),
@@ -125,18 +118,21 @@ async def list_documents(db: AsyncSession = Depends(get_db)):
 @router.post("/api/documents")
 async def upload_document(
     file: UploadFile = File(...),
+    principal: Any = Depends(knowledge_admin),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Uploads a new document (.txt, .md), extracts text, indexes vectors to Pinecone,
     and records metadata in PostgreSQL.
     """
-    filename = file.filename or "uploaded_document.txt"
-    if ".." in filename or "/" in filename or "\\" in filename:
+    raw_name = Path(file.filename or "uploaded_document.txt").name
+    clean_name = raw_name.lstrip(".")
+    if not clean_name:
         raise HTTPException(status_code=400, detail="Invalid filename or path traversal attempt.")
 
+    sanitized_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', clean_name)
     allowed_exts = (".txt", ".md", ".json", ".csv")
-    if not any(filename.lower().endswith(ext) for ext in allowed_exts):
+    if not any(sanitized_name.lower().endswith(ext) for ext in allowed_exts):
         raise HTTPException(status_code=400, detail=f"Unsupported file extension. Allowed: {', '.join(allowed_exts)}")
 
     max_bytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024
@@ -153,12 +149,12 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="File is empty.")
 
     # Save to local knowledge directory for persistence
-    local_path = KNOWLEDGE_DIR / filename
+    local_path = KNOWLEDGE_DIR / sanitized_name
     local_path.write_text(text_content, encoding="utf-8")
 
     doc_repo = DocumentRepository(db)
     doc_id, chunk_count = await index_document(
-        name=filename,
+        name=sanitized_name,
         content=text_content,
         mime_type=file.content_type or "text/plain",
         doc_repo=doc_repo
@@ -167,13 +163,17 @@ async def upload_document(
     return {
         "status": "success",
         "document_id": doc_id,
-        "name": filename,
+        "name": sanitized_name,
         "chunk_count": chunk_count
     }
 
 
 @router.delete("/api/documents/{doc_id}")
-async def delete_document_endpoint(doc_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_document_endpoint(
+    doc_id: str,
+    principal: Any = Depends(knowledge_admin),
+    db: AsyncSession = Depends(get_db)
+):
     """Deletes document metadata from PostgreSQL and vectors from Pinecone."""
     doc_repo = DocumentRepository(db)
     success = await delete_document(doc_id=doc_id, doc_repo=doc_repo)

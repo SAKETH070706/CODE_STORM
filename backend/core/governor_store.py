@@ -111,7 +111,18 @@ class Store:
                 return {"valid": False, "broken_at_sequence": row["sequence"]}
             previous = row["event_hash"]
             anchors[index] = previous
-        anchored = checkpoint is None or anchors.get(checkpoint["event_count"]) == checkpoint["head_hash"]
+        if checkpoint is not None:
+            exp_count = checkpoint.get("event_count")
+            exp_head = checkpoint.get("head_hash")
+            anchored = (
+                isinstance(exp_count, int)
+                and exp_count >= 0
+                and isinstance(exp_head, str)
+                and len(exp_head) == 64
+                and anchors.get(exp_count) == exp_head
+            )
+        else:
+            anchored = True
         return {"valid": anchored, "event_count": len(rows), "head_hash": previous,
                 "checkpoint_matched": anchored if checkpoint is not None else None,
                 "protection": "Tamper-evident, not immutable; retain checkpoints independently."}

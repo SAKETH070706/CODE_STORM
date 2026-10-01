@@ -41,7 +41,11 @@ def get_principal(credentials: Optional[HTTPAuthorizationCredentials] = Depends(
     if credentials is None:
         raise HTTPException(401, "Bearer token required", headers={"WWW-Authenticate": "Bearer"})
     matched = None
-    for token, principal in identities():
+    try:
+        active_identities = identities()
+    except RuntimeError as e:
+        raise HTTPException(503, f"Authentication service misconfigured: {e}")
+    for token, principal in active_identities:
         if secrets.compare_digest(credentials.credentials.encode(), token.encode()):
             matched = principal
     if matched is None:

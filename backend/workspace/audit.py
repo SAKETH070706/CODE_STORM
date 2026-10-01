@@ -45,6 +45,17 @@ def verify(s, org_id, checkpoint=None):
         return {"valid": False, "organization_id": org_id, "event_count": count, "error": f"Organization '{org_id}' not found"}
     valid = org.audit_sequence == count and org.audit_head == previous
     if checkpoint:
-        valid = valid and checkpoint.get("organization_id") == org_id and anchors.get(checkpoint.get("event_count")) == checkpoint.get("head_hash")
+        exp_org = checkpoint.get("organization_id")
+        exp_count = checkpoint.get("event_count")
+        exp_head = checkpoint.get("head_hash")
+        valid = (
+            valid
+            and exp_org == org_id
+            and isinstance(exp_count, int)
+            and exp_count >= 0
+            and isinstance(exp_head, str)
+            and len(exp_head) == 64
+            and anchors.get(exp_count) == exp_head
+        )
     return {"valid": valid, "organization_id": org_id, "event_count": count, "head_hash": previous,
             "protection": "Tamper-evident; retain checkpoints independently. Complete rewrites and unanchored tail deletion are not independently detectable."}

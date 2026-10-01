@@ -70,9 +70,9 @@ def resolve(s, token):
         credential = s.scalar(select(Credential).where(Credential.key_hash == hashed, Credential.active.is_(True)))
         if credential is None:
             raise HTTPException(401, "Invalid or revoked credential")
-        agent = owned(s, Agent, credential.organization_id, credential.agent_id)
-        if agent.state != "ACTIVE":
-            raise HTTPException(401, "Agent is revoked")
+        agent = s.scalar(select(Agent).where(Agent.id == credential.agent_id, Agent.organization_id == credential.organization_id))
+        if agent is None or agent.state != "ACTIVE":
+            raise HTTPException(401, "Agent is revoked or unavailable")
         return Identity(agent.id, agent.organization_id, "agent", agent.data["role"], credential_id=credential.id, legacy_demo=not token.startswith("agent_"))
     try:
         claims = jwt.decode(token, signing_secret(), algorithms=["HS256"], audience="png5-workspace", issuer="png5-local",
